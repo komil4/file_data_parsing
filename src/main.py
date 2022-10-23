@@ -25,7 +25,7 @@ def show_image_full_screen(image, name="Image"):
 
 # Save image to disk
 def save_image_to_disk(image, name):
-    cv2.imwrite(name, image)
+    cv2.imwrite(os.getcwd() + '/csvs/' + name + '.jpeg', image)
 
 
 # Парсинг PDF файла
@@ -242,35 +242,35 @@ def get_lines(img):
     eroded_vertical_image = cv2.erode(img_bin, vertical_kernel, iterations=3)
     vertical_lines = cv2.dilate(eroded_vertical_image, vertical_kernel, iterations=5)
 
-    #save_image_to_disk(vertical_lines, '/Users/kamil/PycharmProjects/pythonProject/images/vert.jpeg')
+    #save_image_to_disk(vertical_lines, image_path + '/vert.jpeg')
 
     # thresh, vertical_lines = cv2.threshold(vertical_lines, 128, 255, cv2.THRESH_BINARY)
 
-    # save_image_to_disk(vertical_lines, '/Users/kamil/PycharmProjects/pythonProject/images/vert2.jpeg')
+    # save_image_to_disk(vertical_lines, image_path + '/vert2.jpeg')
 
     horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (np.array(img).shape[1] // 150, 1))
     eroded_horizontal_image = cv2.erode(img_bin, horizontal_kernel, iterations=3)
     horizontal_lines = cv2.dilate(eroded_horizontal_image, horizontal_kernel, iterations=5)
 
-    #save_image_to_disk(horizontal_lines, '/Users/kamil/PycharmProjects/pythonProject/images/hor.jpeg')
+    #save_image_to_disk(horizontal_lines, 'image_path + '/hor.jpeg')
 
     # thresh, horizontal_lines = cv2.threshold(horizontal_lines, 128, 255, cv2.THRESH_BINARY)
 
-    # save_image_to_disk(horizontal_lines, '/Users/kamil/PycharmProjects/pythonProject/images/hor2.jpeg')
+    # save_image_to_disk(horizontal_lines, image_path + '/hor2.jpeg')
 
     vertical_horizontal_lines = cv2.bitwise_or(vertical_lines, horizontal_lines)
     # vertical_horizontal_lines = cv2.addWeighted(vertical_lines, 0.5, horizontal_lines, 0.5, 0.0)
 
-    #save_image_to_disk(vertical_horizontal_lines, '/Users/kamil/PycharmProjects/pythonProject/images/ver_hor.jpeg')
+    #save_image_to_disk(vertical_horizontal_lines, image_path + '/ver_hor.jpeg')
 
     #vertical_horizontal_lines = cv2.erode(~vertical_horizontal_lines, kernel, iterations=5)
 
-    save_image_to_disk(vertical_horizontal_lines, '/Users/kamil/PycharmProjects/pythonProject/images/lines_1.jpeg')
+    save_image_to_disk(vertical_horizontal_lines, image_path + '/lines_1.jpeg')
 
     vertical_horizontal_lines_dilate = cv2.dilate(vertical_horizontal_lines, kernel, iterations=5)
-    save_image_to_disk(vertical_horizontal_lines_dilate, '/Users/kamil/PycharmProjects/pythonProject/images/lines_2.jpeg')
+    save_image_to_disk(vertical_horizontal_lines_dilate, image_path + '/lines_2.jpeg')
     vertical_horizontal_lines_erode = cv2.erode(vertical_horizontal_lines_dilate, kernel, iterations=5)
-    save_image_to_disk(vertical_horizontal_lines_erode, '/Users/kamil/PycharmProjects/pythonProject/images/lines_3.jpeg')
+    save_image_to_disk(vertical_horizontal_lines_erode, image_path + '/lines_3.jpeg')
     thresh, vertical_horizontal_lines_tr = cv2.threshold(vertical_horizontal_lines_erode, 50, 255, cv2.THRESH_BINARY)
     vertical_horizontal_lines = cv2.dilate(vertical_horizontal_lines_tr, kernel, iterations=1)
     # vertical_horizontal_lines = cv2.erode(~vertical_horizontal_lines, kernel, iterations=1)
@@ -312,7 +312,7 @@ def get_image_without_lines(img, vertical_horizontal_lines):
 
 def get_boxes(vertical_horizontal_lines):
     vertical_horizontal_lines = 255 - vertical_horizontal_lines
-    save_image_to_disk(vertical_horizontal_lines, '/Users/kamil/PycharmProjects/pythonProject/images/lines_end.jpeg')
+    save_image_to_disk(vertical_horizontal_lines, image_path + '/lines_end.jpeg')
     contours, hierarchy = cv2.findContours(vertical_horizontal_lines, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     bounding_boxes = [cv2.boundingRect(c) for c in contours]
@@ -475,21 +475,21 @@ def find_cell_contours(image, lines):
 
 # Get table data from file
 def get_table_data_from_image(image, image_bin):
-    save_image_to_disk(image, '/Users/kamil/PycharmProjects/pythonProject/images/image.jpeg')
+    save_image_to_disk(image, image_path + '/image.jpeg')
     # Get lines from file
     vertical_horizontal_lines = get_lines(image)
     # vertical_horizontal_lines = get_lines_2(image_bin)
     # For tests
     # show_image(vertical_horizontal_lines)
-    save_image_to_disk(vertical_horizontal_lines, '/Users/kamil/PycharmProjects/pythonProject/images/lines.jpeg')
-    save_image_to_disk(image, '/Users/kamil/PycharmProjects/pythonProject/images/img.jpeg')
+    save_image_to_disk(vertical_horizontal_lines, image_path + '/lines.jpeg')
+    save_image_to_disk(image, image_path + '/img.jpeg')
 
     # Get image without lines
     image_without_lines = find_cell_contours(image, vertical_horizontal_lines)
     # image_without_lines = get_image_without_lines(image, vertical_horizontal_lines)
     # For tests
     # show_image(image_without_lines)
-    save_image_to_disk(image_without_lines, '/Users/kamil/PycharmProjects/pythonProject/images/without_lines.jpeg')
+    save_image_to_disk(image_without_lines, image_path + '/without_lines.jpeg')
 
     # Main logic
     print("Start get dataframe")
@@ -533,7 +533,7 @@ def home():
 # Чекбокс для тестирования блоков
 box_image_test = False
 box_image_iterator = 0
-image_path = '/Users/kamil/PycharmProjects/pythonProject/images/'
+image_path = os.getcwd() + '/images/'
 
 # Чекбокс для тестирования изначальных изображений
 main_image_test = True
