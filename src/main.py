@@ -9,6 +9,7 @@ from pdf2image import convert_from_path
 import fitz
 
 
+# Функции для сохранения и вывода изображений
 # Show image
 def show_image(image, name="Image"):
     plt.imshow(image, cmap='gray')
@@ -27,6 +28,7 @@ def save_image_to_disk(image, name):
     cv2.imwrite(name, image)
 
 
+# Парсинг PDF файла
 # Split PDF file to few images
 def split_pdf_doc(filename, method=0):
     file_names = []
@@ -70,6 +72,7 @@ def save_files_to_disk(files):
     return file_names
 
 
+# Обработка набора файлов
 # Get saved filenames
 def get_images_from_files(file_names):
     file_names_new = []
@@ -169,6 +172,7 @@ def get_data_from_files(files, datatype=0):
     return files_data
 
 
+# Обработка изначального изображения
 # Get main image
 def get_main_image(file, rotation=90):
     img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
@@ -496,6 +500,7 @@ def get_table_data_from_image(image, image_bin):
     return dataframe
 
 
+# Модуль работы с HTTP сервисом
 # HTTP service methods
 app = Flask(__name__)
 
@@ -523,11 +528,14 @@ def home():
     return "Hello, it's OCB program!"
 
 
+# Блок тестирования
 # Image test block
+# Чекбокс для тестирования блоков
 box_image_test = False
 box_image_iterator = 0
 image_path = '/Users/kamil/PycharmProjects/pythonProject/images/'
 
+# Чекбокс для тестирования изначальных изображений
 main_image_test = True
 main_image_iterator = 0
 
