@@ -1,10 +1,11 @@
+import copy
 import os
 import cv2
 import pandas as pd
 import pytesseract
 import numpy as np
 from matplotlib import pyplot as plt
-from flask import Flask, request, json
+from flask import Flask, request, json, render_template, url_for, send_from_directory
 from pdf2image import convert_from_path
 import fitz
 
@@ -25,7 +26,7 @@ def show_image_full_screen(image, name="Image"):
 
 # Save image to disk
 def save_image_to_disk(image, name):
-    cv2.imwrite(os.getcwd() + '/csvs/' + name + '.jpeg', image)
+    cv2.imwrite((os.getcwd() + '/images/' + name + '.jpeg').replace('/src', ''), image)
 
 
 # Парсинг PDF файла
@@ -36,9 +37,9 @@ def split_pdf_doc(filename, method=0):
     if method == 0:
         pages = []
         doc = fitz.open(filename)
-        for n in range(doc.pageCount):
-            page = doc.loadPage(n)
-            pix = page.getPixmap()
+        for n in range(doc.page_count):
+            page = doc.load_page(n)
+            pix = page.get_pixmap()
             image = np.frombuffer(pix.samples,
                                   dtype=np.uint8).reshape(pix.h, pix.w, pix.n)
             image = np.ascontiguousarray(image[..., [2, 1, 0]])
@@ -82,7 +83,7 @@ def get_images_from_files(file_names):
         # If file in PDF format
         if filename[-3:] == "pdf":
             # Split PDF to images
-            page_file_names = split_pdf_doc(filename, 0)
+            page_file_names = split_pdf_doc(filename)
             file_names_new.append(page_file_names)
         else:
             file_names_new.append(filename)
@@ -109,11 +110,11 @@ def get_image_for_tesseract(image):
     # Test block
     if box_image_test:
         global box_image_iterator
-        save_image_to_disk(image, image_path + str(box_image_iterator) + '_image.jpeg')
-        save_image_to_disk(kernel, image_path + str(box_image_iterator) + '_kernel.jpeg')
-        save_image_to_disk(median, image_path + str(box_image_iterator) + '_median.jpeg')
-        save_image_to_disk(erosion, image_path + str(box_image_iterator) + '_erosion.jpeg')
-        save_image_to_disk(dilation, image_path + str(box_image_iterator) + '_dilation.jpeg')
+        save_image_to_disk(image, str(box_image_iterator) + '_image.jpeg')
+        save_image_to_disk(kernel, str(box_image_iterator) + '_kernel.jpeg')
+        save_image_to_disk(median, str(box_image_iterator) + '_median.jpeg')
+        save_image_to_disk(erosion, str(box_image_iterator) + '_erosion.jpeg')
+        save_image_to_disk(dilation, str(box_image_iterator) + '_dilation.jpeg')
         box_image_iterator = box_image_iterator + 1
 
     return dilation
@@ -126,7 +127,7 @@ def get_single_data_from_image(image):
     # Test block
     if box_image_test:
         global box_image_iterator
-        save_image_to_disk(new_image, image_path + str(box_image_iterator) + '.jpeg')
+        save_image_to_disk(new_image, str(box_image_iterator) + '.jpeg')
         box_image_iterator = box_image_iterator + 1
 
     custom_config = '--psm 7 --oem 1'
@@ -198,34 +199,34 @@ def get_main_image(file, rotation=90):
 
     ret, img_bin = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY)
 
-    #save_image_to_disk(img_bin, '/Users/kamil/PycharmProjects/pythonProject/images/bin.jpeg')
-    #save_image_to_disk(rotated, '/Users/kamil/PycharmProjects/pythonProject/images/img.jpeg')
+    # save_image_to_disk(img_bin, '/Users/kamil/PycharmProjects/pythonProject/images/bin.jpeg')
+    # save_image_to_disk(rotated, '/Users/kamil/PycharmProjects/pythonProject/images/img.jpeg')
 
-    #kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    #th = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 9)
-    #image = cv2.adaptiveThreshold(th, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 5)
-    #dilation = cv2.dilate(th, kernel)
-    #erosion = cv2.erode(dilation, kernel, iterations=3)
-    #median = cv2.medianBlur(erosion, 3)
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    # th = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 9)
+    # image = cv2.adaptiveThreshold(th, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 5)
+    # dilation = cv2.dilate(th, kernel)
+    # erosion = cv2.erode(dilation, kernel, iterations=3)
+    # median = cv2.medianBlur(erosion, 3)
 
-    #erosion_median = cv2.bitwise_and(erosion, median)
-    #summary = cv2.bitwise_and(erosion_median, dilation)
+    # erosion_median = cv2.bitwise_and(erosion, median)
+    # summary = cv2.bitwise_and(erosion_median, dilation)
 
-    #g2 = cv2.medianBlur(th, 3)
+    # g2 = cv2.medianBlur(th, 3)
 
-    #image = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 9)
-    #ret2, image = cv2.threshold(img, 50, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # image = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 9)
+    # ret2, image = cv2.threshold(img, 50, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     # Test block
     if main_image_test:
         global main_image_iterator
-        #save_image_to_disk(erosion, image_path + str(main_image_iterator) + '_erosion.jpeg')
-        #save_image_to_disk(dilation, image_path + str(main_image_iterator) + '_dilation.jpeg')
-        #save_image_to_disk(median, image_path + str(main_image_iterator) + '_median.jpeg')
-        #save_image_to_disk(th, image_path + str(main_image_iterator) + '_th.jpeg')
-        #save_image_to_disk(img, image_path + str(main_image_iterator) + '_main.jpeg')
-        #save_image_to_disk(image, image_path + str(main_image_iterator) + '_threshold.jpeg')
-        #save_image_to_disk(summary, image_path + str(main_image_iterator) + '_summary.jpeg')
+        # save_image_to_disk(erosion, image_path + str(main_image_iterator) + '_erosion.jpeg')
+        # save_image_to_disk(dilation, image_path + str(main_image_iterator) + '_dilation.jpeg')
+        # save_image_to_disk(median, image_path + str(main_image_iterator) + '_median.jpeg')
+        # save_image_to_disk(th, image_path + str(main_image_iterator) + '_th.jpeg')
+        # save_image_to_disk(img, image_path + str(main_image_iterator) + '_main.jpeg')
+        # save_image_to_disk(image, image_path + str(main_image_iterator) + '_threshold.jpeg')
+        # save_image_to_disk(summary, image_path + str(main_image_iterator) + '_summary.jpeg')
         main_image_iterator = main_image_iterator + 1
 
     return rotated, img_bin
@@ -236,13 +237,13 @@ def get_lines(img):
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
 
     img_bin = 255 - img
-    #thresh, img_for_lines = cv2.threshold(img_bin, 128, 255, cv2.THRESH_BINARY)
+    # thresh, img_for_lines = cv2.threshold(img_bin, 128, 255, cv2.THRESH_BINARY)
 
     vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, np.array(img).shape[1] // 150))
     eroded_vertical_image = cv2.erode(img_bin, vertical_kernel, iterations=3)
     vertical_lines = cv2.dilate(eroded_vertical_image, vertical_kernel, iterations=5)
 
-    #save_image_to_disk(vertical_lines, image_path + '/vert.jpeg')
+    # save_image_to_disk(vertical_lines, image_path + '/vert.jpeg')
 
     # thresh, vertical_lines = cv2.threshold(vertical_lines, 128, 255, cv2.THRESH_BINARY)
 
@@ -252,7 +253,7 @@ def get_lines(img):
     eroded_horizontal_image = cv2.erode(img_bin, horizontal_kernel, iterations=3)
     horizontal_lines = cv2.dilate(eroded_horizontal_image, horizontal_kernel, iterations=5)
 
-    #save_image_to_disk(horizontal_lines, 'image_path + '/hor.jpeg')
+    # save_image_to_disk(horizontal_lines, 'image_path + '/hor.jpeg')
 
     # thresh, horizontal_lines = cv2.threshold(horizontal_lines, 128, 255, cv2.THRESH_BINARY)
 
@@ -261,16 +262,16 @@ def get_lines(img):
     vertical_horizontal_lines = cv2.bitwise_or(vertical_lines, horizontal_lines)
     # vertical_horizontal_lines = cv2.addWeighted(vertical_lines, 0.5, horizontal_lines, 0.5, 0.0)
 
-    #save_image_to_disk(vertical_horizontal_lines, image_path + '/ver_hor.jpeg')
+    # save_image_to_disk(vertical_horizontal_lines, image_path + '/ver_hor.jpeg')
 
-    #vertical_horizontal_lines = cv2.erode(~vertical_horizontal_lines, kernel, iterations=5)
+    # vertical_horizontal_lines = cv2.erode(~vertical_horizontal_lines, kernel, iterations=5)
 
-    save_image_to_disk(vertical_horizontal_lines, image_path + '/lines_1.jpeg')
+    save_image_to_disk(vertical_horizontal_lines, 'lines_1.jpeg')
 
     vertical_horizontal_lines_dilate = cv2.dilate(vertical_horizontal_lines, kernel, iterations=5)
-    save_image_to_disk(vertical_horizontal_lines_dilate, image_path + '/lines_2.jpeg')
+    save_image_to_disk(vertical_horizontal_lines_dilate, 'lines_2.jpeg')
     vertical_horizontal_lines_erode = cv2.erode(vertical_horizontal_lines_dilate, kernel, iterations=5)
-    save_image_to_disk(vertical_horizontal_lines_erode, image_path + '/lines_3.jpeg')
+    save_image_to_disk(vertical_horizontal_lines_erode, 'lines_3.jpeg')
     thresh, vertical_horizontal_lines_tr = cv2.threshold(vertical_horizontal_lines_erode, 50, 255, cv2.THRESH_BINARY)
     vertical_horizontal_lines = cv2.dilate(vertical_horizontal_lines_tr, kernel, iterations=1)
     # vertical_horizontal_lines = cv2.erode(~vertical_horizontal_lines, kernel, iterations=1)
@@ -302,7 +303,7 @@ def get_lines_2(img):
 # Get image without lines
 def get_image_without_lines(img, vertical_horizontal_lines):
     # thresh, vertical_horizontal_lines = cv2.threshold(vertical_horizontal_lines, 128, 255,
-                                                      #cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    # cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     # image_and = cv2.bitwise_or(img, vertical_horizontal_lines)
     image_xor = cv2.bitwise_xor(img, vertical_horizontal_lines)
     image_without_lines = 255 - image_xor
@@ -310,9 +311,9 @@ def get_image_without_lines(img, vertical_horizontal_lines):
     return image_without_lines
 
 
-def get_boxes(vertical_horizontal_lines):
+def get_boxes(img, vertical_horizontal_lines):
     vertical_horizontal_lines = 255 - vertical_horizontal_lines
-    save_image_to_disk(vertical_horizontal_lines, image_path + '/lines_end.jpeg')
+    save_image_to_disk(vertical_horizontal_lines, 'lines_end.jpeg')
     contours, hierarchy = cv2.findContours(vertical_horizontal_lines, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     bounding_boxes = [cv2.boundingRect(c) for c in contours]
@@ -358,13 +359,19 @@ def get_boxes(vertical_horizontal_lines):
     heights = []
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
+        # for show boxes
+        image_copy = copy.deepcopy(img)
+        image_copy = cv2.rectangle(image_copy, (x, y), (x + w, y + h), (0, 255, 0), 5)
+        #save_image_to_disk(image_copy, str(x) + '_' + str(y) + '.jpeg')
         # boxes.append([x, y, w, h])
         if 5000 > w > 70 and h > 20 and start_y_position <= y <= end_y_position:
             weights.append(w)
             heights.append(h)
             boxes.append([x, y, w, h])
             # for show boxes
-            # image = cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),1)
+            # image_copy = copy.deepcopy(img)
+            # image_copy = cv2.rectangle(image_copy, (x, y), (x+w, y+h), (0, 255, 0), 5)
+            # save_image_to_disk(image_copy, str(x) + '_' + str(y) + '.jpeg')
             # show_image(image)
 
     # show_image_full_screen(image)
@@ -372,8 +379,8 @@ def get_boxes(vertical_horizontal_lines):
     return boxes, bounding_boxes_new
 
 
-def get_boxes_list(vertical_horizontal_lines):
-    boxes, bounding_boxes = get_boxes(vertical_horizontal_lines)
+def get_boxes_list(img, vertical_horizontal_lines):
+    boxes, bounding_boxes = get_boxes(img, vertical_horizontal_lines)
 
     rows = []
     columns = [boxes[0]]
@@ -475,34 +482,41 @@ def find_cell_contours(image, lines):
 
 # Get table data from file
 def get_table_data_from_image(image, image_bin):
-    save_image_to_disk(image, image_path + '/image.jpeg')
+    save_image_to_disk(image, 'image.jpeg')
     # Get lines from file
     vertical_horizontal_lines = get_lines(image)
     # vertical_horizontal_lines = get_lines_2(image_bin)
     # For tests
     # show_image(vertical_horizontal_lines)
-    save_image_to_disk(vertical_horizontal_lines, image_path + '/lines.jpeg')
-    save_image_to_disk(image, image_path + '/img.jpeg')
+    save_image_to_disk(vertical_horizontal_lines, 'lines.jpeg')
+    save_image_to_disk(image, 'img.jpeg')
 
     # Get image without lines
     image_without_lines = find_cell_contours(image, vertical_horizontal_lines)
     # image_without_lines = get_image_without_lines(image, vertical_horizontal_lines)
     # For tests
     # show_image(image_without_lines)
-    save_image_to_disk(image_without_lines, image_path + '/without_lines.jpeg')
+    save_image_to_disk(image_without_lines, 'without_lines.jpeg')
 
     # Main logic
     print("Start get dataframe")
-    boxes_list = get_boxes_list(vertical_horizontal_lines)
+    boxes_list = get_boxes_list(image, vertical_horizontal_lines)
     dataframe = get_data_frame(image, boxes_list)
     print("Dataframe getting successful")
 
     return dataframe
 
 
+files_data_for_interface = {}
+file_names_for_interface = []
+result_file_names_for_interface = []
+data = []
+
+
 # Модуль работы с HTTP сервисом
 # HTTP service methods
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'results'
 
 
 @app.route("/getTableDataFromFiles", methods=["POST"])
@@ -524,8 +538,69 @@ def get_single_data_from_files():
 
 
 @app.route("/")
+@app.route("/index")
 def home():
-    return "Hello, it's OCB program!"
+    return render_template("index.html", processing=False)
+
+
+@app.route("/result")
+def result():
+    global data
+    return render_template("result.html", data=data)
+
+
+# Web interface
+@app.route("/saveTableDataFromFilesForInterface", methods=["POST"])
+def save_table_data_from_files_for_interface():
+    global data
+    data = []
+    file_names = save_files_to_disk(request.files)
+    global files_data_for_interface
+    files_data_for_interface = get_data_from_files(file_names, 1)
+    for d in files_data_for_interface:
+        file_data = {}
+        dataframe = pd.DataFrame.from_dict(files_data_for_interface.get(d))
+        result_filename = (os.getcwd() + '/results/' + str(d).replace('.', '_') + ".csv")
+        url_for_download = str(d).replace('.', '_') + '.csv'
+        dataframe.to_csv(result_filename)
+
+        file_data = {'filename': url_for_download, 'columns': get_columns_table_data_for_interface(files_data_for_interface.get(d)), 'table':get_table_data_from_files_for_interface(files_data_for_interface.get(d))}
+        result_file_names_for_interface.append(url_for_download)
+        data.append(file_data)
+    return result()
+
+
+def get_columns_table_data_for_interface(table_data):
+    columns = []
+    for i in range(len(table_data)):
+        columns.append(str(i))
+    return columns
+
+
+def get_table_data_from_files_for_interface(table_data):
+    columns = []
+    for a in table_data:
+        rows = []
+        col = table_data.get(a)
+        for b in col:
+            rows.append(col.get(b))
+        columns.append(rows)
+
+    return np.flipud(np.rot90(columns))
+
+
+@app.route("/saveTableDataFromFilesForInterface", methods=["POST"])
+def download_result_files_for_interface():
+    file_names = save_files_to_disk(request.files)
+    global files_data_for_interface
+    files_data_for_interface = get_data_from_files(file_names, 1)
+    return result()
+
+
+@app.route('/downloadFile/<filename>', methods=['GET'])
+def download(filename):
+    full_path = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
+    return send_from_directory(full_path, filename, as_attachment=True)
 
 
 # Блок тестирования
@@ -533,7 +608,7 @@ def home():
 # Чекбокс для тестирования блоков
 box_image_test = False
 box_image_iterator = 0
-image_path = os.getcwd() + '/images/'
+image_path = (os.getcwd() + '/images/').replace('src/', '')
 
 # Чекбокс для тестирования изначальных изображений
 main_image_test = True

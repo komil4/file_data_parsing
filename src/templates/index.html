@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Разпознавание изображения
+{% endblock %}
+
+{% block body %}
+<main class="px-3">
+    {% if processing == False %}
+    <h1>Выберите файл для распознавания.</h1>
+    <p class="lead">Вы можете загрузить изображение или PDF файл. Если PDF файл содержит несколько страниц, то каждая страница будет распознана по отдельности.</p>
+    <p class="lead">
+        <form method=POST enctype=multipart/form-data action="saveTableDataFromFilesForInterface" class="btn btn-lg fw-bold border-white bg-white">
+            <input type="file" name="file">
+            <input type=submit value=" Распознать ">
+        </form>
+        <!-- <a href="#" class="btn btn-lg fw-bold border-white bg-white"> Загрузить файл </a> -->
+    </p>
+    {% else %}
+    <h1>Выполняется распознование файла {{ filename }}.</h1>
+    {% endif %}
+</main>
+{% endblock %}

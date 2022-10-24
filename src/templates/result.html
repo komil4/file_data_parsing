@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Разпознавание изображения
+{% endblock %}
+
+{% block body %}
+<div class="table-responsive">
+  {% for file in data %}
+  <form action="/downloadFile/{{ file['filename'] }}" method="GET">
+    <input type="submit" class="btn btn-lg fw-bold border-white bg-white" value="Загрузить файл ">
+  </form>
+
+  <table class="table table-striped table-sm bg-white">
+    <thead>
+    <tr>
+      {% for column in file['columns'] %}
+      <th scope="col">{{ column }}</th>
+      {% endfor %}
+    </tr>
+    </thead>
+
+    <tbody>
+    {% for str in file['table'] %}
+    <tr>
+      {% for box in str %}
+      <td>{{ box }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endfor %}
+</div>
+{% endblock %}

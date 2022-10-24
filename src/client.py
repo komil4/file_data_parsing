@@ -3,7 +3,7 @@ import os
 import requests
 
 def get_file_struct(filename):
-    return {'1page0.jpg': (filename, open('files/' + filename, 'rb'), 'application/pdf', {'Expires': '0'})}
+    return {'1page0.jpg': (filename, open((os.getcwd() + '/files/' + filename).replace('/src', ''), 'rb'), 'application/pdf', {'Expires': '0'})}
 
 
 url = 'http://localhost:3000/getTableDataFromFiles'
@@ -22,7 +22,7 @@ if response.status_code == 200:
     data = response.json()
     for d in data:
         dataframe = pd.DataFrame.from_dict(data.get(d))
-        pwd = os.getcwd() + '/csvs/' + d + ".csv"
+        pwd = (os.getcwd() + '/csvs/' + d + ".csv").replace('src/', '')
         dataframe.to_csv(pwd)
         print("Save " + d + ".csv")
 else:
