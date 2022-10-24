@@ -1,5 +1,7 @@
 import copy
 import os
+import zipfile
+from pathlib import path
 import cv2
 import pandas as pd
 import pytesseract
@@ -8,6 +10,7 @@ from matplotlib import pyplot as plt
 from flask import Flask, request, json, render_template, url_for, send_from_directory
 from pdf2image import convert_from_path
 import fitz
+import uuid
 
 
 # Функции для сохранения и вывода изображений
@@ -26,8 +29,12 @@ def show_image_full_screen(image, name="Image"):
 
 # Save image to disk
 def save_image_to_disk(image, name):
-    cv2.imwrite((os.getcwd() + '/images/' + name + '.jpeg').replace('/src', ''), image)
+    cv2.imwrite(image_path + name, image)
 
+
+def get_filename_without_type(filename):
+    name, type = path.splitext(filename)
+    return name
 
 # Парсинг PDF файла
 # Split PDF file to few images
@@ -36,7 +43,7 @@ def split_pdf_doc(filename, method=0):
     print("Start convert PDF file " + filename + " to JPEG")
     if method == 0:
         pages = []
-        doc = fitz.open(filename)
+        doc = fitz.open(file_path + filename)
         for n in range(doc.page_count):
             page = doc.load_page(n)
             pix = page.get_pixmap()
@@ -46,13 +53,13 @@ def split_pdf_doc(filename, method=0):
             pages.append(image)
 
         for i in range(len(pages)):
-            page_filename = filename.split(".")[0] + "_page_" + str(i) + ".jpeg"
+            page_filename = get_filename_without_type(filename) + "_page_" + str(i) + ".jpeg"
             save_image_to_disk(pages[i], page_filename)
             file_names.append(page_filename)
     else:
         pages = convert_from_path(os.getcwd() + '/' + filename, size=(10000, None))
         for i in range(len(pages)):
-            page_filename = filename.split(".")[0] + '_page_' + str(i) + '.jpeg'
+            page_filename = get_filename_without_type(filename) + '_page_' + str(i) + '.jpeg'
             save_image_to_disk(pages[i], page_filename)
             file_names.append(page_filename)
 
@@ -66,7 +73,7 @@ def save_files_to_disk(files):
     file_names = []
     for file_name in files:
         file = files.get(file_name)
-        file.save(file.filename)
+        file.save(file_path + file.filename)
         file.stream.seek(0)
         file_names.append(file.filename)
 
@@ -86,7 +93,10 @@ def get_images_from_files(file_names):
             page_file_names = split_pdf_doc(filename)
             file_names_new.append(page_file_names)
         else:
-            file_names_new.append(filename)
+            img = cv2.imread(file_path + filename)
+            new_filename = get_filename_without_type(filename) + '.jpeg'
+            save_image_to_disk(img, image_path + new_filename)
+            file_names_new.append(new_filename)
 
     return file_names_new
 
@@ -518,7 +528,7 @@ data = []
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'results'
 
-
+# Основной эндпоинт для парсинга изображений
 @app.route("/getTableDataFromFiles", methods=["POST"])
 def get_table_data_from_files():
     file_names = save_files_to_disk(request.files)
@@ -526,6 +536,18 @@ def get_table_data_from_files():
     print("Send response to client")
     json_string = json.dumps(files_data)
     return json_string
+
+
+# Основной эндпоинт для парсинга изображений
+@app.route("/getJsonImagesFromFiles", methods=["POST"])
+def get_json_images_from_file():
+    file_names = save_files_to_disk(request.files)
+    images = get_images_from_files(file_names)
+    zip_file_name = file_path + str(uuid.uuid4()) + '.zip'
+    z = zipfile.ZipFile(zip_file_name, 'w')
+    for file in images:
+        z.write(image_path + file)
+    return send_from_directory(zip_file_name, 'result.zip')
 
 
 @app.route("/getSingleDataFromFiles", methods=["POST"])
@@ -609,6 +631,7 @@ def download(filename):
 box_image_test = False
 box_image_iterator = 0
 image_path = (os.getcwd() + '/images/').replace('src/', '')
+file_path = (os.getcwd() + '/files/').replace('src/', '')
 
 # Чекбокс для тестирования изначальных изображений
 main_image_test = True
