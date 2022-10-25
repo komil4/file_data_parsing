@@ -1,16 +1,20 @@
 import copy
 import os
-import zipfile
-from pathlib import path
+import argparse
+import numpy as np
 import cv2
 import pandas as pd
 import pytesseract
-import numpy as np
-from matplotlib import pyplot as plt
-from flask import Flask, request, json, render_template, url_for, send_from_directory
-from pdf2image import convert_from_path
-import fitz
 import uuid
+import zipfile
+
+from flask import Flask, request, json, render_template, url_for, send_from_directory
+from pathlib import Path, PurePosixPath
+from matplotlib import pyplot as plt
+from pdf2image import convert_from_path
+
+#fronend
+#PyMuPDF
 
 
 # Функции для сохранения и вывода изображений
@@ -29,11 +33,29 @@ def show_image_full_screen(image, name="Image"):
 
 # Save image to disk
 def save_image_to_disk(image, name):
-    cv2.imwrite(image_path + name, image)
+    is_success, im_buf_arr = cv2.imencode(".jpeg", image)
+    im_buf_arr.tofile(image_path + name)
+    #cv2.imwrite(image_path + name, image)
+
+
+def read_image_from_disk(filename):
+    stream = open(image_path + filename, 'rb')
+    bytes = bytearray(stream.read())
+    array = np.asarray(bytes, dtype=np.uint8)
+    img = cv2.imdecode(array, cv2.IMREAD_UNCHANGED)
+    return img
+
+
+def read_image_file_from_disk(filename):
+    stream = open(file_path + filename, 'rb')
+    bytes = bytearray(stream.read())
+    array = np.asarray(bytes, dtype=np.uint8)
+    img = cv2.imdecode(array, cv2.IMREAD_UNCHANGED)
+    return img
 
 
 def get_filename_without_type(filename):
-    name, type = path.splitext(filename)
+    name = PurePosixPath(filename).stem
     return name
 
 # Парсинг PDF файла
@@ -41,27 +63,12 @@ def get_filename_without_type(filename):
 def split_pdf_doc(filename, method=0):
     file_names = []
     print("Start convert PDF file " + filename + " to JPEG")
-    if method == 0:
-        pages = []
-        doc = fitz.open(file_path + filename)
-        for n in range(doc.page_count):
-            page = doc.load_page(n)
-            pix = page.get_pixmap()
-            image = np.frombuffer(pix.samples,
-                                  dtype=np.uint8).reshape(pix.h, pix.w, pix.n)
-            image = np.ascontiguousarray(image[..., [2, 1, 0]])
-            pages.append(image)
 
-        for i in range(len(pages)):
-            page_filename = get_filename_without_type(filename) + "_page_" + str(i) + ".jpeg"
-            save_image_to_disk(pages[i], page_filename)
-            file_names.append(page_filename)
-    else:
-        pages = convert_from_path(os.getcwd() + '/' + filename, size=(10000, None))
-        for i in range(len(pages)):
-            page_filename = get_filename_without_type(filename) + '_page_' + str(i) + '.jpeg'
-            save_image_to_disk(pages[i], page_filename)
-            file_names.append(page_filename)
+    pages = convert_from_path(os.getcwd() + '/' + filename, size=(10000, None))
+    for i in range(len(pages)):
+        page_filename = get_filename_without_type(filename) + '_page_' + str(i) + '.jpeg'
+        save_image_to_disk(pages[i], page_filename)
+        file_names.append(page_filename)
 
     print("Convert success")
 
@@ -93,9 +100,10 @@ def get_images_from_files(file_names):
             page_file_names = split_pdf_doc(filename)
             file_names_new.append(page_file_names)
         else:
-            img = cv2.imread(file_path + filename)
+            img = read_image_file_from_disk(filename)
+            # img = cv2.imread(file_path + filename)
             new_filename = get_filename_without_type(filename) + '.jpeg'
-            save_image_to_disk(img, image_path + new_filename)
+            save_image_to_disk(img, new_filename)
             file_names_new.append(new_filename)
 
     return file_names_new
@@ -170,15 +178,15 @@ def get_data_from_files(files, datatype=0):
         # save_image_to_disk(img, '/Users/kamil/PycharmProjects/pythonProject/test.jpeg')
 
         print("Starting get data for file " + filename)
-        try:
-            if datatype == 1:
-                file_data = {filename: get_table_data_from_image(image, image_bin)}
-            else:
-                file_data = {filename: get_single_data_from_image(image)}
-            files_data.update(file_data)
-        except:
-            print("Failed get data for file " + filename + "!")
-            continue
+        #try:
+        if datatype == 1:
+            file_data = {filename: get_table_data_from_image(image, image_bin)}
+        else:
+            file_data = {filename: get_single_data_from_image(image)}
+        files_data.update(file_data)
+        #except:
+           #print("Failed get data for file " + filename + "!")
+            #continue
 
     return files_data
 
@@ -186,7 +194,9 @@ def get_data_from_files(files, datatype=0):
 # Обработка изначального изображения
 # Get main image
 def get_main_image(file, rotation=90):
-    img = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
+    img_rgb = read_image_from_disk(file)
+    img = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
+
     # Image rotation
     if rotation == 90:
         print("Rotate image")
@@ -517,6 +527,12 @@ def get_table_data_from_image(image, image_bin):
     return dataframe
 
 
+# Arguments
+parser = argparse.ArgumentParser(description='Set the server arguments')
+parser.add_argument("-host", default='127.0.0.1', help='This is a hostname value. If you want to start in docker, set 0.0.0.0')
+args = parser.parse_args()
+hostname = args.host
+
 files_data_for_interface = {}
 file_names_for_interface = []
 result_file_names_for_interface = []
@@ -630,12 +646,12 @@ def download(filename):
 # Чекбокс для тестирования блоков
 box_image_test = False
 box_image_iterator = 0
-image_path = (os.getcwd() + '/images/').replace('src/', '')
-file_path = (os.getcwd() + '/files/').replace('src/', '')
+image_path = (os.getcwd() + '/images\\').replace('src/', '').replace('\\', '/')
+file_path = (os.getcwd() + '/files\\').replace('src/', '').replace('\\', '/')
 
 # Чекбокс для тестирования изначальных изображений
 main_image_test = True
 main_image_iterator = 0
 
 if __name__ == "__main__":
-    app.run(host='127.0.0.1', port=3000, debug=True, use_reloader=False)
+    app.run(host=hostname, port=3000, debug=True, use_reloader=False)
