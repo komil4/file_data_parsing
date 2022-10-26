@@ -67,7 +67,7 @@ def save_files_to_disk(files):
     file_names = []
     for file_name in files:
         file = files.get(file_name)
-        if get_file_type(file.filename) == "pdf":
+        if get_file_type(file.filename) == ".pdf":
             file.save(file_path + file.filename)
         else:
             file.save(image_path + file.filename)
