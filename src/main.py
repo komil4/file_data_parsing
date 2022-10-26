@@ -16,8 +16,21 @@ from pdf2image import convert_from_path
 #fronend
 #PyMuPDF
 
+# -------------------------------------
+# More functions
+# Get filename without type
+def get_filename_without_type(filename):
+    name = PurePosixPath(filename).stem
+    return name
 
-# Функции для сохранения и вывода изображений
+
+# Get file type
+def get_file_type(filename):
+    suffix = PurePosixPath(filename).suffix
+    return suffix
+
+# -------------------------------------
+# Вывод изображений
 # Show image
 def show_image(image, name="Image"):
     plt.imshow(image, cmap='gray')
@@ -31,11 +44,12 @@ def show_image_full_screen(image, name="Image"):
     cv2.waitKey(0)
 
 
+# -------------------------------------
+# Работа с диском
 # Save image to disk
 def save_image_to_disk(image, name):
     is_success, im_buf_arr = cv2.imencode(".jpeg", image)
     im_buf_arr.tofile(image_path + name)
-    #cv2.imwrite(image_path + name, image)
 
 
 # Read image from disk
@@ -47,20 +61,43 @@ def read_image_from_disk(path, filename):
     return img
 
 
-def get_filename_without_type(filename):
-    name = PurePosixPath(filename).stem
-    return name
+# Save files to disk
+# If file type PDF to filepath, if Image to imagepath
+def save_files_to_disk(files):
+    file_names = []
+    for file_name in files:
+        file = files.get(file_name)
+        if get_file_type(file.filename) == "pdf":
+            file.save(file_path + file.filename)
+        else:
+            file.save(image_path + file.filename)
+        file.stream.seek(0)
+        file_names.append(file.filename)
 
-# Парсинг PDF файла
+    return file_names
+
+
+# Delete image
+def delete_image(filename):
+    os.remove(image_path + filename)
+
+
+# Delete file
+def delete_file(filename):
+    os.remove(file_path + filename)
+
+
+# -------------------------------------
+# Базовые функции работы с файлами и изображениями
 # Split PDF file to few images
 def split_pdf_doc(filename, method=0):
     file_names = []
     print("Start convert PDF file " + filename + " to JPEG")
 
-    pages = convert_from_path(os.getcwd() + '/' + filename, size=(10000, None))
+    pages = convert_from_path(file_path + filename, size=(9000, None), thread_count=4)
     for i in range(len(pages)):
-        page_filename = get_filename_without_type(filename) + '_page_' + str(i) + '.jpeg'
-        save_image_to_disk(pages[i], page_filename)
+        page_filename = get_filename_without_type(filename) + '_page_' + str(i) + '.jpg'
+        pages[i].save(image_path + page_filename, 'JPEG')
         file_names.append(page_filename)
 
     print("Convert success")
@@ -68,129 +105,31 @@ def split_pdf_doc(filename, method=0):
     return file_names
 
 
-# Save files to disk
-def save_files_to_disk(files):
-    file_names = []
-    for file_name in files:
-        file = files.get(file_name)
-        print("Filename " + file_path + file.filename)
-        file.save(file_path + file.filename)
-        print("Save file " + file_path + file.filename)
-        file.stream.seek(0)
-        file_names.append(file.filename)
-
-    return file_names
-
-
-# Обработка набора файлов
-# Get saved filenames
+# Get images list from files
+# If the file on PDF format he has few pages
+# Remove files fromfilepath and create files on image path
 def get_images_from_files(file_names):
     file_names_new = []
 
     # Working with files
     for filename in file_names:
         # If file in PDF format
-        if filename[-3:] == "pdf":
+        if get_file_type(filename) == "pdf":
             # Split PDF to images
             page_file_names = split_pdf_doc(filename)
-            file_names_new.append(page_file_names)
+            file_names_new.extend(page_file_names)
+            delete_file(filename)
         else:
-            img = read_image_from_disk(file_path, filename)
-            # img = cv2.imread(file_path + filename)
-            new_filename = get_filename_without_type(filename) + '.jpeg'
-            save_image_to_disk(img, new_filename)
-            file_names_new.append(new_filename)
+            file_names_new.append(filename)
 
     return file_names_new
 
 
-# Get image for pytesseract
-def get_image_for_tesseract(image):
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    # show_image(kernel, "Kernel")
-    # border = cv2.copyMakeBorder(roi, 2, 2, 2, 2, cv2.BORDER_CONSTANT, value=[255, 255])
-    # show_image(border, "Border")
-    # resizing = cv2.resize(image, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-    # show_image(resizing, "Resizing")
-    # dilation = cv2.dilate(resizing, kernel, iterations=1)
-    # show_image(dilation, "Dilation")
-    # erosion = cv2.erode(dilation, kernel, iterations=2)
-
-    erosion = cv2.erode(image, kernel)
-    median = cv2.medianBlur(erosion, 3)
-    dilation = cv2.dilate(median, kernel)
-
-    # Test block
-    if box_image_test:
-        global box_image_iterator
-        save_image_to_disk(image, str(box_image_iterator) + '_image.jpeg')
-        save_image_to_disk(kernel, str(box_image_iterator) + '_kernel.jpeg')
-        save_image_to_disk(median, str(box_image_iterator) + '_median.jpeg')
-        save_image_to_disk(erosion, str(box_image_iterator) + '_erosion.jpeg')
-        save_image_to_disk(dilation, str(box_image_iterator) + '_dilation.jpeg')
-        box_image_iterator = box_image_iterator + 1
-
-    return dilation
-
-
-# Get single data from file
-def get_single_data_from_image(image):
-    new_image = get_image_for_tesseract(image)
-
-    # Test block
-    if box_image_test:
-        global box_image_iterator
-        save_image_to_disk(new_image, str(box_image_iterator) + '.jpeg')
-        box_image_iterator = box_image_iterator + 1
-
-    custom_config = '--psm 7 --oem 1'
-    out = pytesseract.image_to_string(new_image, lang='rus+eng', config=custom_config)
-    if len(out) == 0:
-        custom_config = '--psm 8 --oem 3'
-        out = pytesseract.image_to_string(new_image, lang='rus+eng', config=custom_config)
-        # show_image(erosion, "Erosion")
-    if len(out) == 0:
-        custom_config = '--psm 8 --oem 1'
-        out = pytesseract.image_to_string(new_image, lang='rus+eng', config=custom_config)
-        # show_image(erosion, "Erosion")
-    if len(out) == 0:
-        out = ''
-
-    return out
-
-
-# Work with image
-def get_data_from_files(files, datatype=0):
-    files_data = {}
-    file_names = get_images_from_files(files)
-
-    # Working with files
-    for filename in file_names:
-        # Get main image
-        image, image_bin = get_main_image(filename, 90)
-        # For tests
-        # show_image(img)
-        # save_image_to_disk(img, '/Users/kamil/PycharmProjects/pythonProject/test.jpeg')
-
-        print("Starting get data for file " + filename)
-        #try:
-        if datatype == 1:
-            file_data = {filename: get_table_data_from_image(image, image_bin)}
-        else:
-            file_data = {filename: get_single_data_from_image(image)}
-        files_data.update(file_data)
-        #except:
-           #print("Failed get data for file " + filename + "!")
-            #continue
-
-    return files_data
-
-
-# Обработка изначального изображения
+# -------------------------------------
+# Обработка изображениq
 # Get main image
-def get_main_image(file, rotation=90):
-    img_rgb = read_image_from_disk(image_path, file)
-    img = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
+def get_main_image(image, rotation=90):
+    img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Image rotation
     if rotation == 90:
@@ -247,6 +186,107 @@ def get_main_image(file, rotation=90):
     return rotated, img_bin
 
 
+# Get rotate image
+def get_rotate_image(image, rotation=0):
+    if rotation == 90:
+        return cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+    elif rotation == 180:
+        return cv2.rotate(image, cv2.ROTATE_180)
+    elif rotation == 270:
+        return cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    else:
+        return image
+
+
+# -------------------------------------
+# Обработка изображения для анализа
+# Get image for pytesseract
+def get_image_for_tesseract(image):
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    # show_image(kernel, "Kernel")
+    # border = cv2.copyMakeBorder(roi, 2, 2, 2, 2, cv2.BORDER_CONSTANT, value=[255, 255])
+    # show_image(border, "Border")
+    # resizing = cv2.resize(image, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+    # show_image(resizing, "Resizing")
+    # dilation = cv2.dilate(resizing, kernel, iterations=1)
+    # show_image(dilation, "Dilation")
+    # erosion = cv2.erode(dilation, kernel, iterations=2)
+
+    erosion = cv2.erode(image, kernel)
+    median = cv2.medianBlur(erosion, 3)
+    dilation = cv2.dilate(median, kernel)
+
+    # Test block
+    if box_image_test:
+        global box_image_iterator
+        save_image_to_disk(image, str(box_image_iterator) + '_image.jpeg')
+        save_image_to_disk(kernel, str(box_image_iterator) + '_kernel.jpeg')
+        save_image_to_disk(median, str(box_image_iterator) + '_median.jpeg')
+        save_image_to_disk(erosion, str(box_image_iterator) + '_erosion.jpeg')
+        save_image_to_disk(dilation, str(box_image_iterator) + '_dilation.jpeg')
+        box_image_iterator = box_image_iterator + 1
+
+    return dilation
+
+
+# -------------------------------------
+# Получение данных
+# Get single data from file
+def get_single_data_from_image(image):
+    new_image = get_image_for_tesseract(image)
+
+    # Test block
+    if box_image_test:
+        global box_image_iterator
+        save_image_to_disk(new_image, str(box_image_iterator) + '.jpeg')
+        box_image_iterator = box_image_iterator + 1
+
+    custom_config = '--psm 7 --oem 1'
+    out = pytesseract.image_to_string(new_image, lang='rus+eng', config=custom_config)
+    if len(out) == 0:
+        custom_config = '--psm 8 --oem 3'
+        out = pytesseract.image_to_string(new_image, lang='rus+eng', config=custom_config)
+        # show_image(erosion, "Erosion")
+    if len(out) == 0:
+        custom_config = '--psm 8 --oem 1'
+        out = pytesseract.image_to_string(new_image, lang='rus+eng', config=custom_config)
+        # show_image(erosion, "Erosion")
+    if len(out) == 0:
+        out = ''
+
+    return out
+
+
+# Work with image
+def get_data_from_files(files, datatype=0):
+    files_data = {}
+    file_names = get_images_from_files(files)
+
+    # Working with files
+    for filename in file_names:
+        # Get main image
+        img_rgb = read_image_from_disk(image_path, filename)
+        image, image_bin = get_main_image(img_rgb, 90)
+        # For tests
+        # show_image(img)
+        # save_image_to_disk(img, '/Users/kamil/PycharmProjects/pythonProject/test.jpeg')
+
+        print("Starting get data for file " + filename)
+        #try:
+        if datatype == 1:
+            file_data = {filename: get_table_data_from_image(image, image_bin)}
+        else:
+            file_data = {filename: get_single_data_from_image(image)}
+        files_data.update(file_data)
+        #except:
+           #print("Failed get data for file " + filename + "!")
+            #continue
+
+    return files_data
+
+
+# -------------------------------------
+# Подготовка изображения для получения данных
 # Get table lines from file
 def get_lines(img):
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -522,12 +562,21 @@ def get_table_data_from_image(image, image_bin):
     return dataframe
 
 
+# -------------------------------------
 # Arguments CLI
 parser = argparse.ArgumentParser(description='Set the server arguments')
 parser.add_argument("-host", default='127.0.0.1', help='This is a hostname value. If you want to start in docker, set 0.0.0.0')
+parser.add_argument("-port", default='3000', help='This is a port value. Default set 3000')
 args = parser.parse_args()
+# Global values
 hostname = args.host
+port = args.port
 
+image_path = (os.getcwd() + '/images\\').replace('src/', '').replace('\\', '/')
+file_path = (os.getcwd() + '/files\\').replace('src/', '').replace('\\', '/')
+
+
+# Legacy block
 # Global values
 files_data_for_interface = {}
 file_names_for_interface = []
@@ -535,12 +584,69 @@ result_file_names_for_interface = []
 data = []
 
 
-# Модуль работы с HTTP сервисом
-# HTTP service methods
+# -------------------------------------
+# App start
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'results'
 
-# Основной эндпоинт для парсинга изображений
+
+# -------------------------------------
+# Модуль работы с HTTP сервисом
+# HTTP service methods
+# Parsing PDF to Jpeg
+@app.route("/getJpegImagesFromFiles", methods=["POST"])
+def get_jpeg_images_from_files():
+    file_names = save_files_to_disk(request.files)
+    images = get_images_from_files(file_names)
+
+    zip_file_name = str(uuid.uuid4()) + '.zip'
+    zip_file_name_with_path = file_path + zip_file_name
+
+    z = zipfile.ZipFile(zip_file_name_with_path, 'w')
+    for file in images:
+        z.write(image_path + file, file)
+        delete_image(file)
+    z.close()
+
+    response = send_from_directory(file_path, zip_file_name)
+    delete_file(zip_file_name)
+
+    return response
+
+
+@app.route("/getRotateImages", methods=["POST"])
+def get_rotate_image():
+    file_names = save_files_to_disk(request.files)
+    images = get_images_from_files(file_names)
+
+    zip_file_name = str(uuid.uuid4()) + '.zip'
+    zip_file_name_with_path = file_path + zip_file_name
+
+    z = zipfile.ZipFile(zip_file_name_with_path, 'w')
+    for file in images:
+        image = read_image_from_disk(image_path, file)
+        image = get_rotate_image(image, 90)
+        save_image_to_disk(image, file)
+        z.write(image_path + file, file)
+        delete_image(file)
+    z.close()
+
+    response = send_from_directory(file_path, zip_file_name)
+    delete_file(zip_file_name)
+
+    return response
+
+
+@app.route("/getSingleDataFromFiles", methods=["POST"])
+def get_single_data_from_files():
+    file_names = save_files_to_disk(request.files)
+    files_data = get_data_from_files(file_names, 0)
+    json_string = json.dumps(files_data)
+
+    return json_string
+
+
+# Parse images endpoint. Send images, get JSON
 @app.route("/getTableDataFromFiles", methods=["POST"])
 def get_table_data_from_files():
     file_names = save_files_to_disk(request.files)
@@ -550,25 +656,25 @@ def get_table_data_from_files():
     return json_string
 
 
-# Основной эндпоинт для парсинга изображений
-@app.route("/getJsonImagesFromFiles", methods=["POST"])
-def get_json_images_from_file():
-    file_names = save_files_to_disk(request.files)
-    images = get_images_from_files(file_names)
-    zip_file_name = file_path + str(uuid.uuid4()) + '.zip'
-    z = zipfile.ZipFile(zip_file_name, 'w')
-    for file in images:
-        z.write(image_path + file)
-    return send_from_directory(zip_file_name, 'result.zip')
+# -------------------------------------
+# Web interface
+def get_columns_table_data_for_interface(table_data):
+    columns = []
+    for i in range(len(table_data)):
+        columns.append(str(i))
+    return columns
 
 
-@app.route("/getSingleDataFromFiles", methods=["POST"])
-def get_single_data_from_files():
-    file_names = save_files_to_disk(request.files)
-    files_data = get_data_from_files(file_names, 0)
-    print("Send response to client")
-    json_string = json.dumps(files_data)
-    return json_string
+def get_table_data_from_files_for_interface(table_data):
+    columns = []
+    for a in table_data:
+        rows = []
+        col = table_data.get(a)
+        for b in col:
+            rows.append(col.get(b))
+        columns.append(rows)
+
+    return np.flipud(np.rot90(columns))
 
 
 @app.route("/")
@@ -583,7 +689,6 @@ def result():
     return render_template("result.html", data=data)
 
 
-# Web interface
 @app.route("/saveTableDataFromFilesForInterface", methods=["POST"])
 def save_table_data_from_files_for_interface():
     global data
@@ -604,25 +709,6 @@ def save_table_data_from_files_for_interface():
     return result()
 
 
-def get_columns_table_data_for_interface(table_data):
-    columns = []
-    for i in range(len(table_data)):
-        columns.append(str(i))
-    return columns
-
-
-def get_table_data_from_files_for_interface(table_data):
-    columns = []
-    for a in table_data:
-        rows = []
-        col = table_data.get(a)
-        for b in col:
-            rows.append(col.get(b))
-        columns.append(rows)
-
-    return np.flipud(np.rot90(columns))
-
-
 @app.route("/saveTableDataFromFilesForInterface", methods=["POST"])
 def download_result_files_for_interface():
     file_names = save_files_to_disk(request.files)
@@ -637,17 +723,17 @@ def download(filename):
     return send_from_directory(full_path, filename, as_attachment=True)
 
 
+# -------------------------------------
 # Блок тестирования
 # Image test block
 # Чекбокс для тестирования блоков
 box_image_test = False
 box_image_iterator = 0
-image_path = (os.getcwd() + '/images\\').replace('src/', '').replace('\\', '/')
-file_path = (os.getcwd() + '/files\\').replace('src/', '').replace('\\', '/')
+
 
 # Чекбокс для тестирования изначальных изображений
 main_image_test = True
 main_image_iterator = 0
 
 if __name__ == "__main__":
-    app.run(host=hostname, port=3000, debug=True, use_reloader=False)
+    app.run(host=hostname, port=port, debug=True, use_reloader=False)

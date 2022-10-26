@@ -6,8 +6,8 @@ def get_file_struct(filename):
     return {'1page0.jpg': (filename, open((os.getcwd() + '/files/' + filename).replace('/src', ''), 'rb'), 'application/pdf', {'Expires': '0'})}
 
 
-url = 'http://localhost:3000/getTableDataFromFiles'
-files = get_file_struct('1page0.jpg')
+url = 'http://localhost:3000/getJsonImagesFromFiles'
+files = get_file_struct('1.pdf')
 # 1.pdf
 # 1page3.jpg
 # 2.pdf
