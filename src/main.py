@@ -609,7 +609,7 @@ def get_jpeg_images_from_files():
     z.close()
 
     response = send_from_directory(file_path, zip_file_name)
-    delete_file(zip_file_name)
+    # delete_file(zip_file_name)
 
     return response
 
