@@ -3,10 +3,10 @@ import os
 import requests
 
 def get_file_struct(filename):
-    return {'1page0.jpg': (filename, open((os.getcwd() + '/files/' + filename).replace('/src', ''), 'rb'), 'application/pdf', {'Expires': '0'})}
+    return {'1page0.jpg': (filename, open((os.getcwd() + '/test/' + filename).replace('/src', ''), 'rb'), 'application/pdf', {'Expires': '0'})}
 
 
-url = 'http://localhost:3000/getJsonImagesFromFiles'
+url = 'http://localhost:3000/getJpegImagesFromFiles'
 files = get_file_struct('1.pdf')
 # 1.pdf
 # 1page3.jpg

@@ -114,7 +114,7 @@ def get_images_from_files(file_names):
     # Working with files
     for filename in file_names:
         # If file in PDF format
-        if get_file_type(filename) == "pdf":
+        if get_file_type(filename) == ".pdf":
             # Split PDF to images
             page_file_names = split_pdf_doc(filename)
             file_names_new.extend(page_file_names)
