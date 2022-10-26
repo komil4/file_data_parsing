@@ -1,22 +1,20 @@
 # первый этап
 FROM python:3.10.8 AS builder
 
-RUN apt-get update && apt-get install ffmpeg libsm6 libxext6 libgl1-mesa-glx -y
+WORKDIR /server
+
+RUN apt-get update && apt-get install -y ffmpeg libsm6 libxext6 libgl1-mesa-glx poppler-utils tesseract-ocr libtesseract-dev
 
 RUN pip install --upgrade pip
 
-RUN adduser server_user
-USER server_user
-
-WORKDIR /home/server_user
-
-ENV PATH="/home/server_user/.local/bin:${PATH}"
-
 COPY requirements.txt .
-RUN pip install -r requirements.txt
 
-COPY --chown=server_user:server_user ./src ./src
+RUN pip install --no-cache-dir --user -r requirements.txt
 
-EXPOSE 3000
+COPY ./src ./src
+
+RUN mkdir -p images files csvs results
 
 CMD python3 ./src/main.py -host 0.0.0.0
+
+EXPOSE 3000

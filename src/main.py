@@ -1,12 +1,12 @@
 import copy
 import os
 import argparse
-import numpy as np
 import cv2
-import pandas as pd
 import pytesseract
 import uuid
 import zipfile
+import numpy as np
+import pandas as pd
 
 from flask import Flask, request, json, render_template, url_for, send_from_directory
 from pathlib import Path, PurePosixPath
@@ -38,16 +38,9 @@ def save_image_to_disk(image, name):
     #cv2.imwrite(image_path + name, image)
 
 
-def read_image_from_disk(filename):
-    stream = open(image_path + filename, 'rb')
-    bytes = bytearray(stream.read())
-    array = np.asarray(bytes, dtype=np.uint8)
-    img = cv2.imdecode(array, cv2.IMREAD_UNCHANGED)
-    return img
-
-
-def read_image_file_from_disk(filename):
-    stream = open(file_path + filename, 'rb')
+# Read image from disk
+def read_image_from_disk(path, filename):
+    stream = open(path + filename, 'rb')
     bytes = bytearray(stream.read())
     array = np.asarray(bytes, dtype=np.uint8)
     img = cv2.imdecode(array, cv2.IMREAD_UNCHANGED)
@@ -80,7 +73,9 @@ def save_files_to_disk(files):
     file_names = []
     for file_name in files:
         file = files.get(file_name)
+        print("Filename " + file_path + file.filename)
         file.save(file_path + file.filename)
+        print("Save file " + file_path + file.filename)
         file.stream.seek(0)
         file_names.append(file.filename)
 
@@ -100,7 +95,7 @@ def get_images_from_files(file_names):
             page_file_names = split_pdf_doc(filename)
             file_names_new.append(page_file_names)
         else:
-            img = read_image_file_from_disk(filename)
+            img = read_image_from_disk(file_path, filename)
             # img = cv2.imread(file_path + filename)
             new_filename = get_filename_without_type(filename) + '.jpeg'
             save_image_to_disk(img, new_filename)
@@ -194,7 +189,7 @@ def get_data_from_files(files, datatype=0):
 # Обработка изначального изображения
 # Get main image
 def get_main_image(file, rotation=90):
-    img_rgb = read_image_from_disk(file)
+    img_rgb = read_image_from_disk(image_path, file)
     img = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
 
     # Image rotation
@@ -527,12 +522,13 @@ def get_table_data_from_image(image, image_bin):
     return dataframe
 
 
-# Arguments
+# Arguments CLI
 parser = argparse.ArgumentParser(description='Set the server arguments')
 parser.add_argument("-host", default='127.0.0.1', help='This is a hostname value. If you want to start in docker, set 0.0.0.0')
 args = parser.parse_args()
 hostname = args.host
 
+# Global values
 files_data_for_interface = {}
 file_names_for_interface = []
 result_file_names_for_interface = []
