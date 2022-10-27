@@ -632,7 +632,6 @@ def get_rotate_images(degree):
     z.close()
 
     response = send_from_directory(file_path, zip_file_name)
-    delete_file(zip_file_name)
 
     return response
 
