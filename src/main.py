@@ -615,7 +615,7 @@ def get_jpeg_images_from_files():
 
 
 @app.route("/getRotateImages/<degree>", methods=["POST"])
-def get_rotate_image(degree):
+def get_rotate_images(degree):
     file_names = save_files_to_disk(request.files)
     images = get_images_from_files(file_names)
 
