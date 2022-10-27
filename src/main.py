@@ -79,12 +79,19 @@ def save_files_to_disk(files):
 
 # Delete image
 def delete_image(filename):
-    os.remove(image_path + filename)
+    try:
+        os.remove(image_path + filename)
+    except:
+        print("Cannot remove image")
 
 
 # Delete file
 def delete_file(filename):
-    os.remove(file_path + filename)
+    try:
+        os.remove(file_path + filename)
+    except:
+        print("Cannot remove file")
+
 
 
 # -------------------------------------
@@ -94,7 +101,7 @@ def split_pdf_doc(filename, method=0):
     file_names = []
     print("Start convert PDF file " + filename + " to JPEG")
 
-    pages = convert_from_path(file_path + filename, size=(9000, None), thread_count=4)
+    pages = convert_from_path(file_path + filename, thread_count=4)
     for i in range(len(pages)):
         page_filename = get_filename_without_type(filename) + '_page_' + str(i) + '.jpg'
         pages[i].save(image_path + page_filename, 'JPEG')
