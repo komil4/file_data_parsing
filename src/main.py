@@ -187,12 +187,12 @@ def get_main_image(image, rotation=90):
 
 
 # Get rotate image
-def get_rotate_image(image, rotation=0):
-    if rotation == 90:
+def get_rotate_image(image, rotation='0'):
+    if rotation == '90':
         return cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-    elif rotation == 180:
+    elif rotation == '180':
         return cv2.rotate(image, cv2.ROTATE_180)
-    elif rotation == 270:
+    elif rotation == '270':
         return cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
     else:
         return image
