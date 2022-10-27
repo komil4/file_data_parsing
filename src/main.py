@@ -614,8 +614,8 @@ def get_jpeg_images_from_files():
     return response
 
 
-@app.route("/getRotateImages", methods=["POST"])
-def get_rotate_image():
+@app.route("/getRotateImages/<degree>", methods=["POST"])
+def get_rotate_image(degree):
     file_names = save_files_to_disk(request.files)
     images = get_images_from_files(file_names)
 
@@ -625,7 +625,7 @@ def get_rotate_image():
     z = zipfile.ZipFile(zip_file_name_with_path, 'w')
     for file in images:
         image = read_image_from_disk(image_path, file)
-        image = get_rotate_image(image, 90)
+        image = get_rotate_image(image, degree)
         save_image_to_disk(image, file)
         z.write(image_path + file, file)
         delete_image(file)
