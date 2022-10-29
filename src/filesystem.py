@@ -57,7 +57,7 @@ def path_files_to_zip(path, files):
 def path_images_to_zip(path, images):
     image_filenames = []
     for image in images:
-        image_filenames.append(image.get("filename"))
+        image_filenames.append(image.get("name"))
 
     zip_file_name = path_files_to_zip(path, image_filenames)
 

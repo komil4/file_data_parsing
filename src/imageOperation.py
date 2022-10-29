@@ -87,7 +87,7 @@ def rotate_images(images, rotation='0', save=True):
         else:
             return
         if save:
-            filesystem.save_image_to_disk(image.get("path"), image.get("filename"), image.get("image"))
+            filesystem.save_image_to_disk(image.get("path"), image.get("name"), image.get("image"))
 
 
 # Get rotate image
@@ -96,7 +96,7 @@ def convert_to_grayscale_images(images, save=True):
         image["image"] = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         if save:
-            filesystem.save_image_to_disk(image.get("path"), image.get("filename"), image.get("image"))
+            filesystem.save_image_to_disk(image.get("path"), image.get("name"), image.get("image"))
 
 
 # Get rotate image
@@ -106,4 +106,4 @@ def treshold_images(images, save=True):
         image["image"] = img
 
         if save:
-            filesystem.save_image_to_disk(image.get("path"), image.get("filename"), image.get("image"))
+            filesystem.save_image_to_disk(image.get("path"), image.get("name"), image.get("image"))
