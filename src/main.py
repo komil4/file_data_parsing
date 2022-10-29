@@ -72,7 +72,7 @@ def get_jpeg_images_from_files():
         treshold = False
 
     pathname = filesystem.get_new_path_name(temp_path)
-    path = temp_path + pathname
+    path = temp_path + pathname + "/"
 
     file_names = filesystem.save_files_to_disk(path, request.files)
     images = filesystem.get_images_from_files(path, file_names)
@@ -92,7 +92,7 @@ def get_jpeg_images_from_files():
 @app.route("/getRotateImages/<degree>", methods=["POST"])
 def get_rotate_images(degree):
     pathname = filesystem.get_new_path_name(temp_path)
-    path = temp_path + pathname
+    path = temp_path + pathname + "/"
 
     file_names = filesystem.save_files_to_disk(path, request.files)
     images = filesystem.get_images_from_files(path, file_names)
