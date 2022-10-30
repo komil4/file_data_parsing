@@ -100,7 +100,7 @@ def convert_to_grayscale_images(images, save=True):
 
 
 # Get rotate image
-def treshold_images(images, save=True):
+def threshold_images(images, save=True):
     for image in images:
         img, img_bin = cv2.threshold(image.get("image"), 128, 255, cv2.THRESH_BINARY)
         image["image"] = img

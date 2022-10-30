@@ -66,10 +66,10 @@ def get_jpeg_images_from_files():
         color = True
     else:
         color = False
-    if request.args.get('treshold') == "1":
-        treshold = True
+    if request.args.get('threshold') == "1":
+        threshold = True
     else:
-        treshold = False
+        threshold = False
 
     pathname = filesystem.get_new_path_name(temp_path)
     path = temp_path + pathname + "/"
@@ -78,8 +78,8 @@ def get_jpeg_images_from_files():
     images = filesystem.get_images_from_files(path, file_names)
     if color:
         imageOperation.convert_to_grayscale_images(images, False)
-    if treshold:
-        imageOperation.treshold_images(images)
+    if threshold:
+        imageOperation.threshold_images(images)
 
     zip_file_name = filesystem.path_images_to_zip(path, images)
 
