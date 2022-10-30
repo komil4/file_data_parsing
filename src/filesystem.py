@@ -132,5 +132,6 @@ def get_new_path_name(path):
     name = uuid.uuid4().hex
     while os.path.exists(path + name):
         name = uuid.uuid4().hex
+    os.mkdir(path + name)
 
     return name
