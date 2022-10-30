@@ -103,7 +103,7 @@ def get_images_from_files(path, file_names):
             # Split PDF to images
             files = split_pdf_doc(path, filename)
             for image_file in files:
-                image = {'path': path, 'name': filename, 'image': read_image_from_disk(path, image_file)}
+                image = {'path': path, 'name': image_file, 'image': read_image_from_disk(path, image_file)}
                 images.append(image)
         else:
             image = {'path': path, 'name': filename, 'image': read_image_from_disk(path, filename)}
