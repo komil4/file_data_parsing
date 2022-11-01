@@ -97,7 +97,7 @@ def get_rotate_images(degree):
     file_names = filesystem.save_files_to_disk(path, request.files)
     images = filesystem.get_images_from_files(path, file_names)
 
-    imageOperation.rotate_images(images)
+    imageOperation.rotate_images(images, degree)
 
     zip_file_name = filesystem.path_images_to_zip(path, images)
 
