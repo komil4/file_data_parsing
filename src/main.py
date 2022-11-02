@@ -77,7 +77,7 @@ def get_jpeg_images_from_files():
     file_names = filesystem.save_files_to_disk(path, request.files)
     images = filesystem.get_images_from_files(path, file_names)
     if color:
-        imageOperation.convert_to_grayscale_images(images, False)
+        imageOperation.convert_to_grayscale_images(images)
     if threshold:
         imageOperation.threshold_images(images)
 
