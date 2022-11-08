@@ -33,7 +33,7 @@ def show_image_full_screen(image, name="Image"):
 # Arguments CLI
 parser = argparse.ArgumentParser(description='Set the server arguments')
 parser.add_argument("-host", default='127.0.0.1', help='This is a hostname value. If you want to start in docker, set 0.0.0.0')
-parser.add_argument("-port", default='3000', help='This is a port value. Default set 3000')
+parser.add_argument("-port", default='3001', help='This is a port value. Default set 3000')
 args = parser.parse_args()
 # Global values
 hostname = args.host
@@ -70,16 +70,29 @@ def get_jpeg_images_from_files():
         threshold = True
     else:
         threshold = False
+    if request.args.get('autorotate') == "1":
+        autorotate = True
+    else:
+        autorotate = False
 
     pathname = filesystem.get_new_path_name(temp_path)
     path = temp_path + pathname + "/"
 
     file_names = filesystem.save_files_to_disk(path, request.files)
     images = filesystem.get_images_from_files(path, file_names)
-    if color:
-        imageOperation.convert_to_grayscale_images(images)
+
+    if autorotate:
+        imageOperation.auto_rotate_images(images)
+
     if threshold:
         imageOperation.threshold_images(images)
+    elif color:
+        imageOperation.convert_to_grayscale_images(images)
+
+    if True:
+        imageOperation.delete_trash_tables_from_images(images, True)
+
+    # a = imageOperation.get_pixel_size(images[0].get("image"))
 
     zip_file_name = filesystem.path_images_to_zip(path, images)
 

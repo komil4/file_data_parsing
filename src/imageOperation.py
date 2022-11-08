@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import filesystem
+from statistics import mean
 
 # -------------------------------------
 # Обработка изображениq
@@ -91,6 +92,16 @@ def rotate_images(images, rotation='0', save=True):
 
 
 # Get rotate image
+def auto_rotate_images(images, save=True):
+    for image in images:
+        img = image.get("image")
+        if img.shape[0] > img.shape[1]:
+            image["image"] = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+            if save:
+                filesystem.save_image_to_disk(image.get("path"), image.get("name"), image.get("image"))
+
+
+# Get rotate image
 def convert_to_grayscale_images(images, save=True):
     for image in images:
         image["image"] = cv2.cvtColor(image.get("image"), cv2.COLOR_BGR2GRAY)
@@ -102,8 +113,148 @@ def convert_to_grayscale_images(images, save=True):
 # Get rotate image
 def threshold_images(images, save=True):
     for image in images:
-        img, img_bin = cv2.threshold(image.get("image"), 128, 255, cv2.THRESH_BINARY)
+        gray = cv2.cvtColor(image.get("image"), cv2.COLOR_BGR2GRAY)
+
+        th = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 299, 15)
+
+        img = cv2.GaussianBlur(th, (3, 3), 0)
+        
+        #ret3, th_otsu = cv2.threshold(blur, 0, 255, cv2.THRESH_OTSU)
+
+        #ret, img = cv2.threshold(th3, 160, 255, cv2.THRESH_TOZERO)
+        '''
+        clahe = cv2.createCLAHE(clipLimit=3, tileGridSize=(50, 50))
+        lab = cv2.cvtColor(image.get("image"), cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        l2 = clahe.apply(l)
+        lab = cv2.merge((l2, a, b))
+        img2 = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+        gray = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+        #ret, thresh = cv2.threshold(gray, 75, 255, cv2.THRESH_BINARY)
+
+        #kernel = np.ones((2, 2), np.uint8)
+        #obr_img = cv2.erode(thresh, kernel, iterations=1)
+
+        img = cv2.GaussianBlur(gray, (3, 3), 0)
+
+        # img = 255 - img;
+
+        # img, img_bin = cv2.threshold(image.get("image"), 128, 255, cv2.THRESH_BINARY)
+        '''
+
+
+
         image["image"] = img
 
         if save:
             filesystem.save_image_to_disk(image.get("path"), image.get("name"), image.get("image"))
+
+
+def get_pixel_size(image):
+    if len(image.shape) > 2:
+        return 1;
+    width = image.shape[0]
+    height = image.shape[1]
+    pixel_sizes = []
+    count = 0
+    for x in range(1, width):
+        for y in range(1, height):
+            if image[x, y] != image[x - 1, y] and count > 1 and abs(int(image[x, y]) - int(image[x - 1, y])) > 5:
+                pixel_sizes.append(count)
+                count = 0
+            else:
+                count += 1
+        count = 0;
+
+    return mean(pixel_sizes)
+
+
+def get_vertical_lines(image):
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    img = cv2.dilate(image, kernel, iterations=2)
+    structuring_element = np.ones((200, 2), np.uint8)
+    erode_image = cv2.erode(img, structuring_element, iterations=1)
+    vertical_lines = cv2.dilate(erode_image, structuring_element, iterations=1)
+
+    contours, hierarchy = cv2.findContours(vertical_lines, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    filesystem.save_image_to_disk(image.get("path"), image.get("name"), "lines.jpeg")
+
+    return vertical_lines
+
+def delete_trash_tables_from_images(images, save=True):
+    for image in images:
+        img = image.get("image")
+        img_inv = 255 - img
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        img_a = cv2.dilate(img_inv, kernel, iterations=3)
+        structuring_element = np.ones((100, 1), np.uint8)
+        erode_image = cv2.erode(img_a, structuring_element, iterations=1)
+        vertical_lines = cv2.dilate(erode_image, structuring_element, iterations=5)
+
+        # contours, hierarchy = cv2.findContours(vertical_lines, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        lines = cv2.HoughLinesP(vertical_lines, 1, np.pi / 360, threshold=120,  # Min number of votes for valid line
+                                minLineLength=vertical_lines.shape[0] // 2,  # Min allowed length of line
+                                maxLineGap=20)
+
+        #color = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        y_min_max = [vertical_lines.shape[0], 0]
+        x_min = vertical_lines.shape[1]
+
+        top_point = []
+        down_point = []
+
+        lines_list = []
+        for points in lines:
+            # Extracted points nested in the list
+            x1, y1, x2, y2 = points[0]
+            '''
+            if y1 < y_min_max[0] and x_min > x1:
+                top_point = [x1, y1]
+                y_min_max[0] = y1
+                x_min = x1 + 100
+            if y2 < y_min_max[0] and x_min > x2:
+                top_point = [x2, y2]
+                y_min_max[0] = y2
+                x_min = x2 + 100
+    
+            if y1 > y_min_max[1] and x_min > x1:
+                down_point = [x1, y1]
+                y_min_max[1] = y1
+                x_min = x1 + 100
+            if y2 > y_min_max[1] and x_min > x1:
+                down_point = [x2, y2]
+                y_min_max[1] = y2
+                x_min = x2 + 100
+            '''
+            # Draw the lines joing the points
+            # On the original image
+            # if abs(y1 - y2) > vertical_lines.shape[0] // 2:
+            # cv2.line(color, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            # Maintain a simples lookup list for points
+            lines_list.append([(x1, y1), (x2, y2)])
+            if x1 < x_min:
+                x_min = x1
+            if x2 < x_min:
+                x_min = x2
+
+        points_for_draw = np.array([[0, 0],
+                                    [x_min, 0],
+                                    [x_min, vertical_lines.shape[0]],
+                                    [0, vertical_lines.shape[0]]])
+        points_for_draw.reshape(-1, 1, 2)
+
+        cv2.fillPoly(img, [points_for_draw], color=(255, 255, 255))
+
+        # filesystem.save_image_to_disk(image.get("path"), "img.jpeg", color)
+
+        # filesystem.save_image_to_disk(image.get("path"), "vertical_lines.jpeg", vertical_lines)
+
+        image["image"] = img
+
+        if save:
+            filesystem.save_image_to_disk(image.get("path"), image.get("name"), image.get("image"))
+
+    return
