@@ -196,7 +196,7 @@ def delete_trash_tables_from_images(images, save=True):
         # contours, hierarchy = cv2.findContours(vertical_lines, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         lines = cv2.HoughLinesP(vertical_lines, 1, np.pi / 360, threshold=120,  # Min number of votes for valid line
-                                minLineLength=vertical_lines.shape[0] // 2,  # Min allowed length of line
+                                minLineLength=vertical_lines.shape[0] // 3 * 2,  # Min allowed length of line
                                 maxLineGap=20)
 
         #color = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
