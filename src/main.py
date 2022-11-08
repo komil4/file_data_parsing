@@ -73,7 +73,7 @@ def get_jpeg_images_from_files():
     if request.args.get('autorotate') == "1":
         autorotate = True
     else:
-        autorotate = False
+        autorotate = True
 
     pathname = filesystem.get_new_path_name(temp_path)
     path = temp_path + pathname + "/"
