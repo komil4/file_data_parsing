@@ -1,13 +1,15 @@
 import os
 import argparse
 import cv2
+import logging
+
+from flask import Flask, request, json, render_template, url_for, send_from_directory
+from matplotlib import pyplot as plt
 
 import imageOperation
 import filesystem
-
-from flask import Flask, request, json, render_template, url_for, send_from_directory
-
-from matplotlib import pyplot as plt
+import image
+import imageStructure
 
 
 #fronend
@@ -35,19 +37,17 @@ parser = argparse.ArgumentParser(description='Set the server arguments')
 parser.add_argument("-host", default='127.0.0.1', help='This is a hostname value. If you want to start in docker, set 0.0.0.0')
 parser.add_argument("-port", default='3001', help='This is a port value. Default set 3000')
 args = parser.parse_args()
+
+
 # Global values
-hostname = args.host
-port = args.port
+HTTP_HOSTNAME = args.host
+HTTP_PORT = args.port
+TEMP_PATH = (os.getcwd() + '/temp\\').replace('\\', '/')
 
-temp_path = (os.getcwd() + '/temp\\').replace('\\', '/')
 
-
-# Legacy block
-# Global values
-files_data_for_interface = {}
-file_names_for_interface = []
-result_file_names_for_interface = []
-data = []
+# -------------------------------------
+# Logging settings
+logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 
 
 # -------------------------------------
@@ -75,12 +75,39 @@ def get_jpeg_images_from_files():
     else:
         autorotate = True
 
-    pathname = filesystem.get_new_path_name(temp_path)
-    path = temp_path + pathname + "/"
+    # Новая папка для временного хранения файлов
+    # Это же значение пусть будет дальше УИДом сессии
+    pathname = filesystem.get_new_path_name(TEMP_PATH)
+    path = TEMP_PATH + pathname + "/"
 
-    file_names = filesystem.save_files_to_disk(path, request.files)
-    images = filesystem.get_images_from_files(path, file_names)
+    # Получили массив изображений
+    file_names = filesystem.save_files_to_disk(path, request.files, pathname)
+    images = filesystem.get_images_from_files(path, file_names, pathname)
 
+    image.images_process(images,
+            [{'name': 'autorotate_image',      'parameters': ['', '']},
+             {'name': 'gray_scale',            'parameters': ['', '']},
+             # {'name': 'save_image',            'parameters': ['gray_scale', True]},
+             {'name': 'gaussian_threshold',    'parameters': ['', '']},
+             # {'name': 'save_image',            'parameters': ['gaussian_threshold', True]},
+             {'name': 'vertical_lines',        'parameters': ['gaussian_threshold', 'vertical_lines_negative']},
+             {'name': 'save_image',            'parameters': ['vertical_lines_negative', True]},
+             {'name': 'horizontal_lines',      'parameters': ['gaussian_threshold', 'horizontal_lines_negative']},
+             {'name': 'save_image',            'parameters': ['horizontal_lines_negative', True]},
+             {'name': 'table_tines',           'parameters': [['horizontal_lines_negative', 'vertical_lines_negative'], 'table_tines_negative']},
+             {'name': 'save_image'}
+             ])
+
+    for img in images:
+        lines = img.get_image_by_step_name()
+        polygon = imageStructure.Polygon(lines, img.name, pathname)
+        polygon.group_all_blocks()
+        rotate_image = img.get_image_by_step_name('autorotate')
+        if len(rotate_image.shape) == 2:
+            rotate_image = cv2.cvtColor(rotate_image, cv2.COLOR_GRAY2RGB)
+        polygon.draw_boxes_and_save(path, rotate_image)
+
+    '''
     if autorotate:
         imageOperation.auto_rotate_images(images)
 
@@ -91,10 +118,9 @@ def get_jpeg_images_from_files():
 
     if True:
         imageOperation.delete_trash_tables_from_images(images, True)
+        '''
 
-    # a = imageOperation.get_pixel_size(images[0].get("image"))
-
-    zip_file_name = filesystem.path_images_to_zip(path, images)
+    zip_file_name = filesystem.path_images_to_zip(path, images, pathname)
 
     response = send_from_directory(path, zip_file_name)
     # delete_file(zip_file_name)
@@ -104,8 +130,8 @@ def get_jpeg_images_from_files():
 
 @app.route("/getRotateImages/<degree>", methods=["POST"])
 def get_rotate_images(degree):
-    pathname = filesystem.get_new_path_name(temp_path)
-    path = temp_path + pathname + "/"
+    pathname = filesystem.get_new_path_name(TEMP_PATH)
+    path = TEMP_PATH + pathname + "/"
 
     file_names = filesystem.save_files_to_disk(path, request.files)
     images = filesystem.get_images_from_files(path, file_names)
@@ -125,17 +151,5 @@ def home():
     return render_template("index.html", processing=False)
 
 
-# -------------------------------------
-# Блок тестирования
-# Image test block
-# Чекбокс для тестирования блоков
-box_image_test = False
-box_image_iterator = 0
-
-
-# Чекбокс для тестирования изначальных изображений
-main_image_test = True
-main_image_iterator = 0
-
 if __name__ == "__main__":
-    app.run(host=hostname, port=port, debug=True, use_reloader=False)
+    app.run(host=HTTP_HOSTNAME, port=HTTP_PORT, debug=True, use_reloader=False)

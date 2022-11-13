@@ -1,10 +1,18 @@
 import os
+from PIL import Image
 import cv2
 import numpy as np
 import uuid
 import zipfile
 from pathlib import Path, PurePosixPath
 from pdf2image import convert_from_path
+import logging
+
+import image
+
+PDF_CONVERT_THREADS = 4
+IMAGE_VERTICAL_SIZE = 8000
+Image.MAX_IMAGE_PIXELS = 933120000
 
 
 # -------------------------------------
@@ -29,7 +37,7 @@ def read_image_from_disk(path, filename):
 
 # Save files to disk
 # If file type PDF to filepath, if Image to imagepath
-def save_files_to_disk(path, files):
+def save_files_to_disk(path, files, uid='0'):
     file_names = []
     for file_name in files:
         file = files.get(file_name)
@@ -37,11 +45,14 @@ def save_files_to_disk(path, files):
         file.stream.seek(0)
         file_names.append(file.filename)
 
+    # Logging
+    logging.info('id ' + uid + ' - save files to path ' + path)
+
     return file_names
 
 
 # Запаковка файлов
-def path_files_to_zip(path, files):
+def path_files_to_zip(path, files, uid='0'):
     zip_file_name = str(uuid.uuid4()) + '.zip'
     zip_file_name_with_path = path + zip_file_name
 
@@ -50,42 +61,46 @@ def path_files_to_zip(path, files):
         z.write(path + file, file)
     z.close()
 
+    # Logging
+    logging.info('id ' + uid + ' - path files to ZIP ' + zip_file_name_with_path)
+
     return zip_file_name
 
 
 # Запаковка изображний
-def path_images_to_zip(path, images):
+def path_images_to_zip(path, images, uid='0'):
     image_filenames = []
-    for image in images:
-        image_filenames.append(image.get("name"))
+    for img in images:
+        image_filenames.append(img.filename)
 
-    zip_file_name = path_files_to_zip(path, image_filenames)
+    zip_file_name = path_files_to_zip(path, image_filenames, uid)
 
     return zip_file_name
 
 
 # Delete file
-def delete_file(path, filename):
+def delete_file(path, filename, uid='0'):
     try:
         os.remove(path + filename)
     except:
-        print("Cannot remove file")
+        # Logging
+        logging.error('id ' + uid + ' - cannot delete file ' + path + filename)
 
 
 # -------------------------------------
 # Базовые функции работы с файлами и изображениями
 # Split PDF file to few images
-def split_pdf_doc(path, filename, file_suffix='.jpg', image_type='JPEG'):
+def split_pdf_doc(path, filename, file_suffix='.jpg', image_type='JPEG', uid='0'):
     file_names = []
-    print("Start convert PDF file " + filename + " to JPEG")
 
-    pages = convert_from_path(path + filename, thread_count=4)
+    pages = convert_from_path(path + filename, thread_count=PDF_CONVERT_THREADS, size=(IMAGE_VERTICAL_SIZE, None))
     for i in range(len(pages)):
         page_filename = get_filename_without_type(filename) + '_page_' + str(i) + file_suffix
         pages[i].save(path + page_filename, image_type)
         file_names.append(page_filename)
 
-    print("Convert success")
+    # Logging
+    logging.info('id ' + uid + ' - split pdf to JPEG files to path ' + path + filename)
 
     return file_names
 
@@ -93,7 +108,7 @@ def split_pdf_doc(path, filename, file_suffix='.jpg', image_type='JPEG'):
 # Get images list from files
 # If the file on PDF format he has few pages
 # Remove files fromfilepath and create files on image path
-def get_images_from_files(path, file_names):
+def get_images_from_files(path, file_names, uid='0'):
     images = []
 
     # Working with files
@@ -101,13 +116,16 @@ def get_images_from_files(path, file_names):
         # If file in PDF format
         if get_file_type(filename) == ".pdf":
             # Split PDF to images
-            files = split_pdf_doc(path, filename)
+            files = split_pdf_doc(path, filename, uid=uid)
             for image_file in files:
-                image = {'path': path, 'name': image_file, 'image': read_image_from_disk(path, image_file)}
-                images.append(image)
+                img = image.Img(path, image_file, uid)
+                images.append(img)
         else:
-            image = {'path': path, 'name': filename, 'image': read_image_from_disk(path, filename)}
-            images.append(image)
+            img = image.Img(path, filename, uid)
+            images.append(img)
+
+    # Logging
+    logging.info('id ' + uid + ' - get images from files in path ' + path)
 
     return images
 

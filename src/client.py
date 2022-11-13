@@ -6,8 +6,8 @@ def get_file_struct(filename):
     return {filename: (filename, open((os.getcwd() + '/test/' + filename).replace('/src', ''), 'rb'), 'application/pdf', {'Expires': '0'})}
 
 
-url = 'http://localhost:3001/getJpegImagesFromFiles?threshold=1&color=0&autorotate=1'
-files = get_file_struct('1page0.jpg')
+url = 'http://localhost:3001/getJpegImagesFromFiles?threshold=0&color=1&autorotate=1'
+files = get_file_struct('2.pdf')
 # 1.pdf
 # 1page3.jpg
 # 2.pdf
