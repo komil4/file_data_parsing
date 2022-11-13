@@ -62,18 +62,13 @@ app.config['UPLOAD_FOLDER'] = 'results'
 # Parsing PDF to Jpeg
 @app.route("/getJpegImagesFromFiles", methods=["POST"])
 def get_jpeg_images_from_files():
-    if request.args.get('color') == "1":
-        color = True
-    else:
-        color = False
-    if request.args.get('threshold') == "1":
-        threshold = True
-    else:
-        threshold = False
+    actions = []
     if request.args.get('autorotate') == "1":
-        autorotate = True
-    else:
-        autorotate = True
+        actions.append({'name': 'autorotate_image', 'parameters': ['main', 'autorotate_image']})
+    if request.args.get('color') == "1":
+        actions.append({'name': 'gray_scale', 'parameters': ['autorotate_image', 'gray_scale']})
+        if request.args.get('threshold') == "1":
+            actions.append({'name': 'gaussian_threshold', 'parameters': ['gray_scale', '']})
 
     # Новая папка для временного хранения файлов
     # Это же значение пусть будет дальше УИДом сессии
@@ -84,41 +79,9 @@ def get_jpeg_images_from_files():
     file_names = filesystem.save_files_to_disk(path, request.files, pathname)
     images = filesystem.get_images_from_files(path, file_names, pathname)
 
-    image.images_process(images,
-            [{'name': 'autorotate_image',      'parameters': ['', '']},
-             {'name': 'gray_scale',            'parameters': ['', '']},
-             # {'name': 'save_image',            'parameters': ['gray_scale', True]},
-             {'name': 'gaussian_threshold',    'parameters': ['', '']},
-             # {'name': 'save_image',            'parameters': ['gaussian_threshold', True]},
-             {'name': 'vertical_lines',        'parameters': ['gaussian_threshold', 'vertical_lines_negative']},
-             {'name': 'save_image',            'parameters': ['vertical_lines_negative', True]},
-             {'name': 'horizontal_lines',      'parameters': ['gaussian_threshold', 'horizontal_lines_negative']},
-             {'name': 'save_image',            'parameters': ['horizontal_lines_negative', True]},
-             {'name': 'table_tines',           'parameters': [['horizontal_lines_negative', 'vertical_lines_negative'], 'table_tines_negative']},
-             {'name': 'save_image'}
-             ])
+    actions.append({'name': 'save_image',            'parameters': ['', False]})
 
-    for img in images:
-        lines = img.get_image_by_step_name()
-        polygon = imageStructure.Polygon(lines, img.name, pathname)
-        polygon.group_all_blocks()
-        rotate_image = img.get_image_by_step_name('autorotate')
-        if len(rotate_image.shape) == 2:
-            rotate_image = cv2.cvtColor(rotate_image, cv2.COLOR_GRAY2RGB)
-        polygon.draw_boxes_and_save(path, rotate_image)
-
-    '''
-    if autorotate:
-        imageOperation.auto_rotate_images(images)
-
-    if threshold:
-        imageOperation.threshold_images(images)
-    elif color:
-        imageOperation.convert_to_grayscale_images(images)
-
-    if True:
-        imageOperation.delete_trash_tables_from_images(images, True)
-        '''
+    image.images_process(images, actions)
 
     zip_file_name = filesystem.path_images_to_zip(path, images, pathname)
 
@@ -130,15 +93,73 @@ def get_jpeg_images_from_files():
 
 @app.route("/getRotateImages/<degree>", methods=["POST"])
 def get_rotate_images(degree):
+    actions = [{'name': 'rotate_image', 'parameters': [['main', degree], 'rotate_image']}]
+
+    # Новая папка для временного хранения файлов
+    # Это же значение пусть будет дальше УИДом сессии
     pathname = filesystem.get_new_path_name(TEMP_PATH)
     path = TEMP_PATH + pathname + "/"
 
-    file_names = filesystem.save_files_to_disk(path, request.files)
-    images = filesystem.get_images_from_files(path, file_names)
+    # Получили массив изображений
+    file_names = filesystem.save_files_to_disk(path, request.files, pathname)
+    images = filesystem.get_images_from_files(path, file_names, pathname)
 
-    imageOperation.rotate_images(images, degree)
+    actions.append({'name': 'save_image', 'parameters': ['', False]})
 
-    zip_file_name = filesystem.path_images_to_zip(path, images)
+    image.images_process(images, actions)
+
+    zip_file_name = filesystem.path_images_to_zip(path, images, pathname)
+
+    response = send_from_directory(path, zip_file_name)
+    # delete_file(zip_file_name)
+
+    return response
+
+
+@app.route("/getCutedImage", methods=["POST"])
+def get_cutted_images():
+    # Новая папка для временного хранения файлов
+    # Это же значение пусть будет дальше УИДом сессии
+    pathname = filesystem.get_new_path_name(TEMP_PATH)
+    path = TEMP_PATH + pathname + "/"
+
+    # Получили массив изображений
+    file_names = filesystem.save_files_to_disk(path, request.files, pathname)
+    images = filesystem.get_images_from_files(path, file_names, pathname)
+
+    image.images_process(images,
+                         [{'name': 'autorotate_image', 'parameters': ['main', 'autorotate_image']},
+                          {'name': 'gray_scale', 'parameters': ['autorotate_image', 'gray_scale']},
+                          # {'name': 'save_image',            'parameters': ['gray_scale', True]},
+                          {'name': 'gaussian_threshold', 'parameters': ['gray_scale', '']},
+                          # {'name': 'save_image',            'parameters': ['gaussian_threshold', True]},
+                          {'name': 'vertical_lines', 'parameters': ['gaussian_threshold', 'vertical_lines_negative']},
+                          # {'name': 'save_image',            'parameters': ['vertical_lines_negative', True]},
+                          {'name': 'align_table',
+                           'parameters': [['vertical_lines_negative', 'gray_scale'], 'align_table']},
+                          {'name': 'save_image', 'parameters': ['align_table', True]},
+                          {'name': 'gaussian_threshold', 'parameters': ['align_table', 'gaussian_threshold']},
+                          {'name': 'save_image', 'parameters': ['gaussian_threshold', True]},
+                          {'name': 'vertical_lines', 'parameters': ['gaussian_threshold', 'vertical_lines_negative']},
+                          # {'name': 'save_image',            'parameters': ['vertical_lines_negative', True]},
+                          {'name': 'horizontal_lines',
+                           'parameters': ['gaussian_threshold', 'horizontal_lines_negative']},
+                          # {'name': 'save_image',            'parameters': ['horizontal_lines_negative', True]},
+                          {'name': 'table_tines',
+                           'parameters': [['horizontal_lines_negative', 'vertical_lines_negative'],
+                                          'table_tines_negative']},
+                          {'name': 'save_image', 'parameters': ['table_tines', True]}
+                          ])
+    for img in images:
+        lines = img.get_image_by_step_name('table_tines_negative')
+        polygon = imageStructure.Polygon(lines, img.name, pathname)
+        polygon.group_all_blocks()
+        rotate_image = img.get_image_by_step_name('align_table')
+        if len(rotate_image.shape) == 2:
+            rotate_image = cv2.cvtColor(rotate_image, cv2.COLOR_GRAY2RGB)
+        polygon.draw_boxes_and_save(path, rotate_image)
+
+    zip_file_name = filesystem.path_images_to_zip(path, images, pathname)
 
     response = send_from_directory(path, zip_file_name)
 

@@ -24,7 +24,7 @@ class Polygon:
 
         self.contours = contours
         self.bounding_boxes = bounding_boxes
-        self.dif = 30
+        self.dif = 40
         self.group_boxes = self.boxes.copy()
 
     def draw_contours_and_save(self, path, image):

@@ -7,7 +7,7 @@ def get_file_struct(filename):
 
 
 url = 'http://localhost:3001/getJpegImagesFromFiles?threshold=0&color=1&autorotate=1'
-files = get_file_struct('2.pdf')
+files = get_file_struct('5.pdf')
 # 1.pdf
 # 1page3.jpg
 # 2.pdf

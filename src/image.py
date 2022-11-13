@@ -13,7 +13,7 @@ IMAGE_WIDTH = 5000
 def images_process(images, steps):
     for img in images:
         for step in steps:
-            img.get_functions()[step.get('name')] \
+            img.get_functions()[step.get('name')]\
                 (step.get('parameters')[0] if len(step.get('parameters', [])) > 0 and step.get('parameters')[
                     0] != '' else '',
                  step.get('parameters')[1] if len(step.get('parameters', [])) > 1 and step.get('parameters')[
@@ -67,20 +67,20 @@ class Img:
             filename = self.name + self.suffix
         filesystem.save_image_to_disk(self.path, filename, image)
 
-    def gray_scale(self, from_image='', step_name='gray'):
+    def gray_scale(self, from_image='', step_name='gray_scale'):
         image = self.get_image_by_step_name(from_image)
 
         if len(image.shape) == 2:
             logging.warning(
                 'id ' + self.uid + ' - image has 2 channels, it is a grayscale. Grayscale stopped! ' + step_name)
         else:
-            gray_dict = {'step': step_name if step_name != '' else 'gray',
+            gray_dict = {'step': step_name if step_name != '' else 'gray_scale',
                          'image': cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)}
 
             # Logging
             logging.info('id ' + self.uid + ' - create grayscale image ' + gray_dict.get('step'))
 
-            self.images.append(gray_dict)
+            self.add_image_to_step_line(gray_dict)
 
     def gaussian_threshold(self, from_image='main', step_name='gaussian_threshold'):
         image = self.get_image_by_step_name(from_image)
@@ -98,9 +98,9 @@ class Img:
         # Logging
         logging.info('id ' + self.uid + ' - create gaussian threshold image ' + th_dict.get('step'))
 
-        self.images.append(th_dict)
+        self.add_image_to_step_line(th_dict)
 
-    def autorotate_image(self, from_image='', step_name='autorotate'):
+    def autorotate_image(self, from_image='', step_name='autorotate_image'):
         image = self.get_image_by_step_name(from_image)
         if image.shape[0] > image.shape[1]:
             autorotate_image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
@@ -111,12 +111,36 @@ class Img:
             high = IMAGE_WIDTH * autorotate_image.shape[0] // autorotate_image.shape[1]
             autorotate_image = cv2.resize(autorotate_image, (IMAGE_WIDTH, high), cv2.INTER_NEAREST)
 
-        autorotate_dict = {'step': step_name if step_name != '' else 'autorotate', 'image': autorotate_image}
+        autorotate_dict = {'step': step_name if step_name != '' else 'autorotate_image', 'image': autorotate_image}
 
         # Logging
         logging.info('id ' + self.uid + ' - create autorotate image ' + autorotate_dict.get('step'))
 
-        self.images.append(autorotate_dict)
+        self.add_image_to_step_line(autorotate_dict)
+
+    def rotate_image(self, params=[], step_name='rotated_image'):
+        if len(params) > 1:
+            image = self.get_image_by_step_name(params[0])
+            rotation = self.get_image_by_step_name(params[1])
+        else:
+            return
+
+        if rotation == '90':
+            rotated = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        elif rotation == '180':
+            rotated = cv2.rotate(image, cv2.ROTATE_180)
+        elif rotation == '270':
+            rotated = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        else:
+            rotated = image
+
+        rotated_dict = {'step': step_name if step_name != '' else 'rotated_image',
+                        'image': rotated}
+
+        # Logging
+        logging.info('id ' + self.uid + ' - rotate image ' + rotated_dict.get('step'))
+
+        self.add_image_to_step_line(rotated_dict)
 
     def vertical_lines(self, from_image='', step_name='vertical_lines_negative'):
         if from_image == 'main' or from_image == '':
@@ -134,9 +158,7 @@ class Img:
         # Logging
         logging.info('id ' + self.uid + ' - create vertical lines image ' + vertical_lines_dict.get('step'))
 
-        self.images.append(vertical_lines_dict)
-
-        self.fit_line("vertical_lines_negative")
+        self.add_image_to_step_line(vertical_lines_dict)
 
     def horizontal_lines(self, from_image='', step_name='horizontal_lines_negative'):
         if from_image == 'main' or from_image == '':
@@ -155,7 +177,7 @@ class Img:
         # Logging
         logging.info('id ' + self.uid + ' - create horizontal lines image ' + horizontal_lines_dict.get('step'))
 
-        self.images.append(horizontal_lines_dict)
+        self.add_image_to_step_line(horizontal_lines_dict)
 
     def table_tines(self, image_names=[], step_name='table_lines'):
         if len(image_names) > 0:
@@ -171,7 +193,49 @@ class Img:
         # Logging
         logging.info('id ' + self.uid + ' - create table lines image ' + table_lines_dict.get('step'))
 
-        self.images.append(table_lines_dict)
+        self.add_image_to_step_line(table_lines_dict)
+
+    def align_table(self, image_names=[], step_name='align_table'):
+        if len(image_names) > 1:
+            lines_image = self.get_image_by_step_name(image_names[0])
+            image = self.get_image_by_step_name(image_names[1])
+        elif len(image_names) > 0:
+            lines_image = self.get_image_by_step_name(image_names[0])
+            image = self.get_image_by_step_name('autorotate_image')
+        else:
+            image = self.get_image_by_step_name()
+            lines_image = image
+
+        lines = cv2.HoughLinesP(lines_image, 1, np.pi / 360, threshold=120,  # Min number of votes for valid line
+                                minLineLength=lines_image.shape[0] // 2,  # Min allowed length of line
+                                maxLineGap=20)
+        height, width = lines_image.shape[:2]
+
+        angles = []
+        for points in lines:
+            x1, y1, x2, y2 = points[0]
+            if (abs(x1 - x2) ** 2 + abs(y1 - y2) ** 2) ** 0.5 < height // 3:
+                continue
+            if (x1 < x2 and y1 < y2) or (x1 > x2 and y1 > y2):
+                angles.append(-1 * 90 - np.degrees(np.arctan(abs((y2 - y1) / (x2 - x1)))))
+            else:
+                angles.append(90 - np.degrees(np.arctan(abs((y2 - y1) / (x2 - x1)))))
+
+        angle = mean(angles) if len(angles) > 1 else 0
+
+        center_x, center_y = (width / 2, height / 2)
+
+        m = cv2.getRotationMatrix2D((center_x, center_y), angle, 1)
+        rotated = cv2.warpAffine(image, m, (width, height))
+
+        rotated_dict = {'step': step_name if step_name != '' else 'align_table',
+                        'image': rotated
+                        }
+
+        # Logging
+        logging.info('id ' + self.uid + ' - align table image ' + rotated_dict.get('step'))
+
+        self.add_image_to_step_line(rotated_dict)
 
     def get_functions(self):
         return {'save_image': self.save_image,
@@ -180,7 +244,9 @@ class Img:
                 'autorotate_image': self.autorotate_image,
                 'vertical_lines': self.vertical_lines,
                 'horizontal_lines': self.horizontal_lines,
-                'table_tines': self.table_tines}
+                'table_tines': self.table_tines,
+                'align_table': self.align_table,
+                'rotate_image': self.rotate_image}
 
     def get_image_by_step_name(self, step_name=''):
         if step_name != '':
@@ -192,48 +258,10 @@ class Img:
         else:
             return self.main_image
 
-    def fit_line(self, from_image=''):
-        image = self.get_image_by_step_name(from_image)
-        lines = cv2.HoughLinesP(image, 1, np.pi / 360, threshold=120,  # Min number of votes for valid line
-                                minLineLength=image.shape[0] // 2,  # Min allowed length of line
-                                maxLineGap=20)
-        new_image = get_new_image(image.shape[0], image.shape[1])
-        angles = []
-        for points in lines:
-            x1, y1, x2, y2 = points[0]
-            if (abs(x1 - x2) ** 2 + abs(y1 - y2) ** 2) ** 0.5 > image.shape[0] // 3:
-                cv2.line(new_image, (x1, y1), (x2, y2), (0, 0, 255), 3)
-            if x1 > x2:
-                continue
-            if x1 == x2 or y1 == y2:
-                continue
-            if y2 > y1:
-                angles.append(np.arctan((x2 - x1) / (y2 - y1)))
-                cv2.line(new_image, (x1, y1), (x2, y2), (255, 0, 0), 1)
-            else:
-                angles.append(-1 * np.arctan((x2 - x1) / (y2 - y1)))
-                cv2.line(new_image, (x1, y1), (x2, y2), (0, 255, 0), 1)
+    def add_image_to_step_line(self, step_struct):
+        for i in range(len(self.images)):
+            if step_struct.get('step') == self.images[i].get('step'):
+                self.images[i] = step_struct
 
-        angle = mean(angles) if len(angles) > 1 else 0
-        (h, w) = image.shape[:2]
-        center = (w // 2, h // 2)
+        self.images.append(step_struct)
 
-        matrix = cv2.getRotationMatrix2D(center, np.degrees(angle), 0.1)
-        rotated = cv2.warpAffine(self.get_image_by_step_name("autorotate_image"), matrix, (w, h))
-
-        step_name = 'rotated'
-
-        rotated_dict = {'step': step_name if step_name != '' else 'rotated',
-                        'image': new_image
-                        }
-
-        # Logging
-        # logging.info('id ' + self.uid + ' - create horizontal lines image ' + horizontal_lines_dict.get('step'))
-
-        self.images.append(rotated_dict)
-
-        # self.fit_line("horizontal_lines_negative")
-
-        self.save_image(step_name, name_from_step=True)
-
-        print(angle)
