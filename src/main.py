@@ -6,7 +6,6 @@ import logging
 from flask import Flask, request, json, render_template, url_for, send_from_directory
 from matplotlib import pyplot as plt
 
-import imageOperation
 import filesystem
 import image
 import imageStructure
