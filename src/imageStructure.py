@@ -162,3 +162,13 @@ class Polygon:
                 new_boxes.append(boxes[i])
 
         self.group_boxes = new_boxes
+
+    def delete_trash_boxes(self):
+        boxes = self.group_boxes
+        new_boxes = []
+        for i in range(len(boxes)):
+            if boxes[i][2] > self.dif and boxes[i][3] > self.dif:
+                new_boxes.append(boxes[i])
+
+        self.group_boxes = new_boxes
+

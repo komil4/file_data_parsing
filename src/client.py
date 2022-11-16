@@ -6,8 +6,8 @@ def get_file_struct(filename):
     return {filename: (filename, open((os.getcwd() + '/test/' + filename).replace('/src', ''), 'rb'), 'application/pdf', {'Expires': '0'})}
 
 
-url = 'http://localhost:3001/getCutedImage?color=1&autorotate=1'
-files = get_file_struct('5_page_19.jpg')
+url = 'http://localhost:3001/getJpegImagesFromFiles?color=1&autorotate=1'
+files = get_file_struct('10.pdf')
 # 1.pdf
 # 1page3.jpg
 # 2.pdf

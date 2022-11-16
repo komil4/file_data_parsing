@@ -217,7 +217,7 @@ class Img:
             if (abs(x1 - x2) ** 2 + abs(y1 - y2) ** 2) ** 0.5 < height // 3:
                 continue
             if (x1 < x2 and y1 < y2) or (x1 > x2 and y1 > y2):
-                angles.append(-1 * 90 - np.degrees(np.arctan(abs((y2 - y1) / (x2 - x1)))))
+                angles.append(-1 * (90 - np.degrees(np.arctan(abs((y2 - y1) / (x2 - x1))))))
             else:
                 angles.append(90 - np.degrees(np.arctan(abs((y2 - y1) / (x2 - x1)))))
 

@@ -170,6 +170,7 @@ def get_cutted_images():
 
         polygon.draw_boxes_and_save(path, rotate_image, '_second')
 
+        polygon.delete_trash_boxes()
         polygon.delete_main_borders()
         polygon.draw_boxes_and_save(path, rotate_image, '_third')
 
