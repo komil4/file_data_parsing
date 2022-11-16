@@ -59,7 +59,7 @@ app.config['UPLOAD_FOLDER'] = 'results'
 # Модуль работы с HTTP сервисом
 # HTTP service methods
 # Parsing PDF to Jpeg
-@app.route("/getJpegImagesFromFiles", methods=["POST"])
+@app.route("/getJpegImagesFromFiles_l", methods=["POST"])
 def get_jpeg_images_from_files():
     actions = []
     if request.args.get('autorotate') == "1":
@@ -115,7 +115,7 @@ def get_rotate_images(degree):
     return response
 
 
-@app.route("/getCutedImage", methods=["POST"])
+@app.route("/getJpegImagesFromFiles", methods=["POST"])
 def get_cutted_images():
     # Новая папка для временного хранения файлов
     # Это же значение пусть будет дальше УИДом сессии
@@ -133,30 +133,48 @@ def get_cutted_images():
                           {'name': 'gaussian_threshold', 'parameters': ['gray_scale', '']},
                           # {'name': 'save_image',            'parameters': ['gaussian_threshold', True]},
                           {'name': 'vertical_lines', 'parameters': ['gaussian_threshold', 'vertical_lines_negative']},
-                          # {'name': 'save_image',            'parameters': ['vertical_lines_negative', True]},
-                          {'name': 'align_table',
-                           'parameters': [['vertical_lines_negative', 'gray_scale'], 'align_table']},
-                          {'name': 'save_image', 'parameters': ['align_table', True]},
-                          {'name': 'gaussian_threshold', 'parameters': ['align_table', 'gaussian_threshold']},
-                          {'name': 'save_image', 'parameters': ['gaussian_threshold', True]},
-                          {'name': 'vertical_lines', 'parameters': ['gaussian_threshold', 'vertical_lines_negative']},
-                          # {'name': 'save_image',            'parameters': ['vertical_lines_negative', True]},
                           {'name': 'horizontal_lines',
                            'parameters': ['gaussian_threshold', 'horizontal_lines_negative']},
-                          # {'name': 'save_image',            'parameters': ['horizontal_lines_negative', True]},
                           {'name': 'table_tines',
                            'parameters': [['horizontal_lines_negative', 'vertical_lines_negative'],
                                           'table_tines_negative']},
-                          {'name': 'save_image', 'parameters': ['table_tines', True]}
+                          # {'name': 'save_image',            'parameters': ['vertical_lines_negative', True]},
+                          {'name': 'align_table',
+                           'parameters': [['vertical_lines_negative', 'gray_scale'], 'align_table']},
+                          {'name': 'align_table',
+                           'parameters': [['vertical_lines_negative', 'table_tines_negative'], 'align_table_tines_negative']},
+                          {'name': 'save_image', 'parameters': ['align_table', True]},
+                          {'name': 'save_image', 'parameters': ['align_table_tines_negative', True]},
+                          # {'name': 'gaussian_threshold', 'parameters': ['align_table', 'gaussian_threshold']},
+                          # {'name': 'save_image', 'parameters': ['gaussian_threshold', True]},
+                          # {'name': 'vertical_lines', 'parameters': ['gaussian_threshold', 'vertical_lines_negative']},
+                          # {'name': 'save_image',            'parameters': ['vertical_lines_negative', True]},
+                          # {'name': 'horizontal_lines',
+                            # 'parameters': ['gaussian_threshold', 'horizontal_lines_negative']},
+                          # {'name': 'save_image',            'parameters': ['horizontal_lines_negative', True]},
+                          # {'name': 'table_tines',
+                           # 'parameters': [['horizontal_lines_negative', 'vertical_lines_negative'],
+                          #                'table_tines_negative']},
+                          # {'name': 'save_image', 'parameters': ['table_tines', True]}
                           ])
     for img in images:
-        lines = img.get_image_by_step_name('table_tines_negative')
+        lines = img.get_image_by_step_name('align_table_tines_negative')
         polygon = imageStructure.Polygon(lines, img.name, pathname)
-        polygon.group_all_blocks()
         rotate_image = img.get_image_by_step_name('align_table')
+
         if len(rotate_image.shape) == 2:
             rotate_image = cv2.cvtColor(rotate_image, cv2.COLOR_GRAY2RGB)
-        polygon.draw_boxes_and_save(path, rotate_image)
+
+        polygon.draw_boxes_and_save(path, rotate_image, '_first')
+        polygon.group_all_blocks()
+
+        polygon.draw_boxes_and_save(path, rotate_image, '_second')
+
+        polygon.delete_main_borders()
+        polygon.draw_boxes_and_save(path, rotate_image, '_third')
+
+        cut_image = polygon.cut_trash(rotate_image)
+        filesystem.save_image_to_disk(path, img.file_name, cut_image)
 
     zip_file_name = filesystem.path_images_to_zip(path, images, pathname)
 
