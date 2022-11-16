@@ -174,7 +174,7 @@ def get_cutted_images():
         polygon.draw_boxes_and_save(path, rotate_image, '_third')
 
         cut_image = polygon.cut_trash(rotate_image)
-        filesystem.save_image_to_disk(path, img.file_name, cut_image)
+        filesystem.save_image_to_disk(path, img.filename, cut_image)
 
     zip_file_name = filesystem.path_images_to_zip(path, images, pathname)
 
