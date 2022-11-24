@@ -59,7 +59,7 @@ app.config['UPLOAD_FOLDER'] = 'results'
 # Модуль работы с HTTP сервисом
 # HTTP service methods
 # Parsing PDF to Jpeg
-@app.route("/getJpegImagesFromFiles_l", methods=["POST"])
+@app.route("/getJpegImagesFromFiles", methods=["POST"])
 def get_jpeg_images_from_files():
     actions = []
     if request.args.get('autorotate') == "1":
@@ -115,7 +115,7 @@ def get_rotate_images(degree):
     return response
 
 
-@app.route("/getJpegImagesFromFiles", methods=["POST"])
+@app.route("/getJpegImagesFromFiles_l", methods=["POST"])
 def get_cutted_images():
     # Новая папка для временного хранения файлов
     # Это же значение пусть будет дальше УИДом сессии
@@ -124,7 +124,10 @@ def get_cutted_images():
 
     # Получили массив изображений
     file_names = filesystem.save_files_to_disk(path, request.files, pathname)
+
     images = filesystem.get_images_from_files(path, file_names, pathname)
+
+
 
     image.images_process(images,
                          [{'name': 'autorotate_image', 'parameters': ['main', 'autorotate_image']},
